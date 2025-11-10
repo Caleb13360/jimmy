@@ -1,0 +1,28 @@
+<div class="surface-card shadow-2">
+  <div class="flex justify-between items-center px-4 py-3">
+    <div class="flex-1">
+      <p-menubar [model]="items">
+        <ng-template #start>
+          <span class="text-xl font-bold mr-6">Jimmy App</span>
+        </ng-template>
+      </p-menubar>
+    </div>
+
+    <div class="flex items-center gap-3" *ngIf="currentUser">
+      <div class="flex items-center gap-2">
+        <p-avatar
+          [label]="getUserInitials()"
+          shape="circle">
+        </p-avatar>
+        <span class="text-sm font-medium hidden md:block">{{ getUserName() }}</span>
+      </div>
+      <p-button
+        label="Logout"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="logout()">
+      </p-button>
+    </div>
+  </div>
+</div>
