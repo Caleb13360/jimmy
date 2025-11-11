@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+/* Force chart to always fill container */
+::ng-deep p-chart {
+  display: block;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+::ng-deep p-chart .p-chart {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+::ng-deep p-chart canvas {
+  height: 100% !important;
+  width: 100% !important;
+}

@@ -298,4 +298,42 @@ export class DataService {
 
     return { data, error };
   }
+
+  // Analytics operations
+  async getSalesAnalytics(filters?: {
+    startDate?: string;
+    endDate?: string;
+    productId?: string;
+    campaignId?: string;
+  }): Promise<{ data: any[] | null; error: any }> {
+    let query = this.supabase
+      .from('sales')
+      .select(`
+        *,
+        products(id, name),
+        product_prices(price),
+        campaigns(id, name)
+      `)
+      .order('sale_date', { ascending: true });
+
+    if (filters?.startDate) {
+      query = query.gte('sale_date', filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      query = query.lte('sale_date', filters.endDate);
+    }
+
+    if (filters?.productId) {
+      query = query.eq('product_id', filters.productId);
+    }
+
+    if (filters?.campaignId) {
+      query = query.eq('campaign_id', filters.campaignId);
+    }
+
+    const { data, error } = await query;
+
+    return { data, error };
+  }
 }

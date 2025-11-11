@@ -1,0 +1,173 @@
+<div class="p-4 md:p-8">
+  <div class="max-w-7xl mx-auto">
+    <h2 class="text-2xl font-bold mb-6">Analytics</h2>
+
+    <!-- Filters -->
+    <p-card styleClass="mb-6">
+      <ng-template #header>
+        <div class="p-4">
+          <h3 class="text-lg font-semibold m-0">Filters</h3>
+        </div>
+      </ng-template>
+
+      <p-message
+        *ngIf="errorMessage"
+        severity="error"
+        [text]="errorMessage"
+        styleClass="w-full mb-4">
+      </p-message>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="flex flex-col gap-2">
+          <label for="dateRange">Date Range</label>
+          <p-select
+            id="dateRange"
+            [(ngModel)]="selectedDateRange"
+            [options]="dateRangeOptions"
+            optionLabel="label"
+            placeholder="Select date range"
+            (onChange)="onDateRangeChange()"
+            styleClass="w-full">
+          </p-select>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="product">Product</label>
+          <p-select
+            id="product"
+            [(ngModel)]="selectedProduct"
+            [options]="products"
+            optionLabel="name"
+            placeholder="All products"
+            [showClear]="true"
+            (onChange)="onFilterChange()"
+            styleClass="w-full">
+          </p-select>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="campaign">Campaign</label>
+          <p-select
+            id="campaign"
+            [(ngModel)]="selectedCampaign"
+            [options]="campaigns"
+            optionLabel="name"
+            placeholder="All campaigns"
+            [showClear]="true"
+            (onChange)="onFilterChange()"
+            styleClass="w-full">
+          </p-select>
+        </div>
+      </div>
+
+      <div *ngIf="showCustomDatePicker" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div class="flex flex-col gap-2">
+          <label for="startDate">Start Date</label>
+          <p-datepicker
+            id="startDate"
+            [(ngModel)]="customStartDate"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            (onSelect)="onCustomDateChange()"
+            styleClass="w-full">
+          </p-datepicker>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="endDate">End Date</label>
+          <p-datepicker
+            id="endDate"
+            [(ngModel)]="customEndDate"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            (onSelect)="onCustomDateChange()"
+            styleClass="w-full">
+          </p-datepicker>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Charts -->
+    <p-card>
+      <div class="flex justify-between items-center mb-4">
+        <div></div>
+        <div class="flex gap-2">
+          <p-button
+            [label]="showRevenue ? 'Showing Revenue ($)' : 'Showing Quantity'"
+            [icon]="showRevenue ? 'pi pi-dollar' : 'pi pi-hashtag'"
+            severity="secondary"
+            [outlined]="true"
+            (onClick)="toggleDisplayMode()">
+          </p-button>
+        </div>
+      </div>
+
+      <p-tabs value="0">
+        <p-tablist>
+          <p-tab value="0">
+            <span class="flex items-center gap-2">
+              <i class="pi pi-box"></i>
+              <span class="font-semibold">Products</span>
+            </span>
+          </p-tab>
+          <p-tab value="1">
+            <span class="flex items-center gap-2">
+              <i class="pi pi-megaphone"></i>
+              <span class="font-semibold">Campaigns</span>
+            </span>
+          </p-tab>
+        </p-tablist>
+
+        <p-tabpanels>
+          <p-tabpanel value="0">
+            <div class="pt-4" style="height: 80vh; display: flex; flex-direction: column;">
+              <div *ngIf="isLoading" class="flex justify-center items-center" style="flex: 1;">
+                <i class="pi pi-spin pi-spinner text-4xl"></i>
+              </div>
+
+              <div *ngIf="!isLoading && productChartData && productChartData.datasets.length > 0"
+                   style="flex: 1; min-height: 0; position: relative;">
+                <p-chart
+                  type="line"
+                  [data]="productChartData"
+                  [options]="productChartOptions"
+                  style="height: 100%; width: 100%;">
+                </p-chart>
+              </div>
+
+              <div *ngIf="!isLoading && (!productChartData || productChartData.datasets.length === 0)"
+                   style="flex: 1;"
+                   class="flex justify-center items-center text-gray-500">
+                No sales data available for the selected filters
+              </div>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="1">
+            <div class="pt-4" style="height: 80vh; display: flex; flex-direction: column;">
+              <div *ngIf="isLoading" class="flex justify-center items-center" style="flex: 1;">
+                <i class="pi pi-spin pi-spinner text-4xl"></i>
+              </div>
+
+              <div *ngIf="!isLoading && campaignChartData && campaignChartData.datasets.length > 0"
+                   style="flex: 1; min-height: 0; position: relative;">
+                <p-chart
+                  type="line"
+                  [data]="campaignChartData"
+                  [options]="campaignChartOptions"
+                  style="height: 100%; width: 100%;">
+                </p-chart>
+              </div>
+
+              <div *ngIf="!isLoading && (!campaignChartData || campaignChartData.datasets.length === 0)"
+                   style="flex: 1;"
+                   class="flex justify-center items-center text-gray-500">
+                No sales data available for the selected filters
+              </div>
+            </div>
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    </p-card>
+  </div>
+</div>
