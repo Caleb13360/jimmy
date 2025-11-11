@@ -43,9 +43,14 @@ export class AuthService {
   }
 
   async signUpWithEmail(email: string, password: string): Promise<{ error: any }> {
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+
     const { error } = await this.supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        emailRedirectTo: redirectTo
+      }
     });
     return { error };
   }
