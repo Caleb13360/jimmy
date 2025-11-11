@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
-import { Database, Product } from '../types/database.types';
+import { Database, Product, ProductPrice } from '../types/database.types';
 
 @Injectable({
   providedIn: 'root'
@@ -17,11 +17,21 @@ export class DataService {
   }
 
   // Product CRUD operations
-  async getProducts(): Promise<{ data: Product[] | null; error: any }> {
+  async getProducts(): Promise<{ data: any[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('products')
+      .select('*, product_prices(count)')
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  }
+
+  async getProduct(id: string): Promise<{ data: Product | null; error: any }> {
     const { data, error } = await this.supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('id', id)
+      .single();
 
     return { data, error };
   }
@@ -45,6 +55,42 @@ export class DataService {
   async deleteProduct(id: string): Promise<{ error: any }> {
     const { error } = await this.supabase
       .from('products')
+      .delete()
+      .eq('id', id);
+
+    return { error };
+  }
+
+  // Product Price CRUD operations
+  async getProductPrices(productId: string): Promise<{ data: ProductPrice[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('product_prices')
+      .select('*')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  }
+
+  async createProductPrice(productId: string, price: number): Promise<{ data: ProductPrice | null; error: any }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+
+    if (!user) {
+      return { data: null, error: { message: 'User not authenticated' } };
+    }
+
+    const { data, error } = await this.supabase
+      .from('product_prices')
+      .insert({ product_id: productId, price, user_id: user.id })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  async deleteProductPrice(id: string): Promise<{ error: any }> {
+    const { error } = await this.supabase
+      .from('product_prices')
       .delete()
       .eq('id', id);
 

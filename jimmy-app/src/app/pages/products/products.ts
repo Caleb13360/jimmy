@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -14,6 +15,7 @@ import { Product } from '../../types/database.types';
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     FormsModule,
     TableModule,
     ButtonModule,
@@ -25,7 +27,7 @@ import { Product } from '../../types/database.types';
   styleUrl: './products.css',
 })
 export class Products implements OnInit {
-  products: Product[] = [];
+  products: any[] = [];
   newProductName = '';
   isLoading = false;
   errorMessage = '';
@@ -67,7 +69,8 @@ export class Products implements OnInit {
     if (error) {
       this.errorMessage = error.message || 'Failed to create product';
     } else if (data) {
-      this.products.unshift(data);
+      // Reload products to get the updated count
+      await this.loadProducts();
       this.newProductName = '';
       this.successMessage = 'Product added successfully';
       setTimeout(() => this.successMessage = '', 3000);

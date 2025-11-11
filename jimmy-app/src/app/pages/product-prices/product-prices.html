@@ -1,9 +1,11 @@
 <div class="p-4 md:p-8">
   <div class="max-w-4xl mx-auto">
-    <p-card>
+    <p-breadcrumb [model]="breadcrumbItems"></p-breadcrumb>
+
+    <p-card styleClass="mt-4">
       <ng-template #header>
         <div class="p-4">
-          <h2 class="text-2xl font-bold m-0">Products</h2>
+          <h2 class="text-2xl font-bold m-0">{{ product?.name }} - Prices</h2>
         </div>
       </ng-template>
 
@@ -23,55 +25,54 @@
         </p-message>
 
         <div class="flex gap-2">
-          <input
-            pInputText
-            type="text"
-            [(ngModel)]="newProductName"
-            placeholder="Enter product name"
+          <p-inputNumber
+            [(ngModel)]="newPrice"
+            mode="currency"
+            currency="USD"
+            placeholder="Enter price"
             class="flex-1"
             [disabled]="isLoading"
-            (keyup.enter)="addProduct()" />
+            (onKeyDown)="$event.key === 'Enter' && addPrice()">
+          </p-inputNumber>
           <p-button
-            label="Add Product"
+            label="Add Price"
             icon="pi pi-plus"
             [loading]="isLoading"
-            (onClick)="addProduct()">
+            (onClick)="addPrice()">
           </p-button>
         </div>
       </div>
 
       <p-table
-        [value]="products"
+        [value]="prices"
         [loading]="isLoading"
         styleClass="p-datatable-sm">
         <ng-template #header>
           <tr>
-            <th>Product Name</th>
-            <th>Prices</th>
+            <th>Price</th>
             <th>Created At</th>
             <th style="width: 100px">Actions</th>
           </tr>
         </ng-template>
-        <ng-template #body let-product>
-          <tr [routerLink]="['/products', product.id, 'prices']" style="cursor: pointer">
-            <td>{{ product.name }}</td>
-            <td>{{ product.product_prices?.[0]?.count || 0 }}</td>
-            <td>{{ product.created_at | date:'short' }}</td>
+        <ng-template #body let-price>
+          <tr>
+            <td>{{ price.price | currency }}</td>
+            <td>{{ price.created_at | date:'short' }}</td>
             <td>
               <p-button
                 icon="pi pi-trash"
                 severity="danger"
                 [outlined]="true"
                 size="small"
-                (onClick)="deleteProduct(product.id); $event.stopPropagation()">
+                (onClick)="deletePrice(price.id)">
               </p-button>
             </td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="4" class="text-center">
-              No products found. Add your first product above.
+            <td colspan="3" class="text-center">
+              No prices found. Add the first price above.
             </td>
           </tr>
         </ng-template>
