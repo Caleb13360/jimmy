@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
-import { Database, Product, ProductPrice, Campaign, CampaignDailySpend } from '../types/database.types';
+import { Database, Product, ProductPrice, Campaign, CampaignDailySpend, Sale } from '../types/database.types';
 
 @Injectable({
   providedIn: 'root'
@@ -221,5 +221,81 @@ export class DataService {
       .eq('id', id);
 
     return { error };
+  }
+
+  // Sales CRUD operations
+  async getSales(): Promise<{ data: any[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('sales')
+      .select(`
+        *,
+        products(name),
+        product_prices(price),
+        campaigns(name)
+      `)
+      .order('sale_date', { ascending: false });
+
+    return { data, error };
+  }
+
+  async createSale(product_id: string, product_price_id: string, campaign_id: string, quantity: number, sale_date: string): Promise<{ data: Sale | null; error: any }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+
+    if (!user) {
+      return { data: null, error: { message: 'User not authenticated' } };
+    }
+
+    const { data, error } = await this.supabase
+      .from('sales')
+      .insert({
+        product_id,
+        product_price_id,
+        campaign_id,
+        quantity,
+        sale_date,
+        user_id: user.id
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  async deleteSale(id: string): Promise<{ error: any }> {
+    const { error } = await this.supabase
+      .from('sales')
+      .delete()
+      .eq('id', id);
+
+    return { error };
+  }
+
+  // Helper methods for Sales dropdown data
+  async getProductsForSales(): Promise<{ data: Product[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('products')
+      .select('*')
+      .order('name', { ascending: true });
+
+    return { data, error };
+  }
+
+  async getProductPricesForSales(productId: string): Promise<{ data: ProductPrice[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('product_prices')
+      .select('*')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  }
+
+  async getCampaignsForSales(): Promise<{ data: Campaign[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaigns')
+      .select('*')
+      .order('name', { ascending: true });
+
+    return { data, error };
   }
 }

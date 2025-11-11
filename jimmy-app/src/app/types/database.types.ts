@@ -129,6 +129,61 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          id: string
+          product_id: string
+          product_price_id: string
+          quantity: number
+          sale_date: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          product_id: string
+          product_price_id: string
+          quantity: number
+          sale_date: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          product_price_id?: string
+          quantity?: number
+          sale_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_product_price_id_fkey"
+            columns: ["product_price_id"]
+            isOneToOne: false
+            referencedRelation: "product_prices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -284,3 +339,7 @@ export type CampaignUpdate = Database['public']['Tables']['campaigns']['Update']
 export type CampaignDailySpend = Database['public']['Tables']['campaign_daily_spend']['Row'];
 export type CampaignDailySpendInsert = Database['public']['Tables']['campaign_daily_spend']['Insert'];
 export type CampaignDailySpendUpdate = Database['public']['Tables']['campaign_daily_spend']['Update'];
+
+export type Sale = Database['public']['Tables']['sales']['Row'];
+export type SaleInsert = Database['public']['Tables']['sales']['Insert'];
+export type SaleUpdate = Database['public']['Tables']['sales']['Update'];
