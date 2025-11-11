@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
-import { MenubarModule } from 'primeng/menubar';
-import { MenuItem } from 'primeng/api';
+import { ToolbarModule } from 'primeng/toolbar';
 import { AuthService } from '../../services/auth.service';
 import { User } from '@supabase/supabase-js';
 
@@ -16,13 +15,12 @@ import { User } from '@supabase/supabase-js';
     RouterModule,
     AvatarModule,
     ButtonModule,
-    MenubarModule
+    ToolbarModule
   ],
   templateUrl: './nav.component.html',
   styleUrl: './nav.component.css'
 })
 export class NavComponent implements OnInit {
-  items: MenuItem[] = [];
   currentUser: User | null = null;
 
   constructor(
@@ -31,19 +29,6 @@ export class NavComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.items = [
-      {
-        label: 'Sync',
-        icon: 'pi pi-sync',
-        routerLink: '/sync'
-      },
-      {
-        label: 'Test',
-        icon: 'pi pi-file',
-        routerLink: '/test'
-      }
-    ];
-
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
     });
@@ -51,7 +36,7 @@ export class NavComponent implements OnInit {
 
   async logout(): Promise<void> {
     await this.authService.signOut();
-    this.router.navigate(['/']);
+    this.router.navigate(['/login']);
   }
 
   getUserInitials(): string {
