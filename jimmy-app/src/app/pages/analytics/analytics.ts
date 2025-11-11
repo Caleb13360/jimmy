@@ -356,6 +356,21 @@ export class Analytics implements OnInit {
     });
     const sortedDates = Array.from(allDates).sort();
 
+    // Fill in all dates in the range with zeros
+    if (sortedDates.length > 1) {
+      const startDate = new Date(sortedDates[0]);
+      const endDate = new Date(sortedDates[sortedDates.length - 1]);
+      const allDatesInRange: string[] = [];
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        allDatesInRange.push(d.toISOString().split('T')[0]);
+      }
+
+      // Use the full date range instead of just dates with sales
+      sortedDates.length = 0;
+      sortedDates.push(...allDatesInRange);
+    }
+
     // Build datasets for each product
     const datasets: any[] = [];
     const colors = [
@@ -417,6 +432,21 @@ export class Analytics implements OnInit {
       dateMap.forEach((_, date) => allDates.add(date));
     });
     const sortedDates = Array.from(allDates).sort();
+
+    // Fill in all dates in the range with zeros
+    if (sortedDates.length > 1) {
+      const startDate = new Date(sortedDates[0]);
+      const endDate = new Date(sortedDates[sortedDates.length - 1]);
+      const allDatesInRange: string[] = [];
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        allDatesInRange.push(d.toISOString().split('T')[0]);
+      }
+
+      // Use the full date range instead of just dates with sales
+      sortedDates.length = 0;
+      sortedDates.push(...allDatesInRange);
+    }
 
     // Build datasets for each campaign
     const datasets: any[] = [];
