@@ -8,6 +8,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
+import { DialogModule } from 'primeng/dialog';
 import { MenuItem } from 'primeng/api';
 import { DataService } from '../../services/data.service';
 import { Product, ProductPrice } from '../../types/database.types';
@@ -23,7 +24,8 @@ import { Product, ProductPrice } from '../../types/database.types';
     InputNumberModule,
     CardModule,
     MessageModule,
-    BreadcrumbModule
+    BreadcrumbModule,
+    DialogModule
   ],
   templateUrl: './product-prices.html',
   styleUrl: './product-prices.css',
@@ -37,6 +39,7 @@ export class ProductPrices implements OnInit {
   errorMessage = '';
   successMessage = '';
   breadcrumbItems: MenuItem[] = [];
+  showDialog = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -86,6 +89,16 @@ export class ProductPrices implements OnInit {
     this.isLoading = false;
   }
 
+  openAddDialog(): void {
+    this.newPrice = null;
+    this.errorMessage = '';
+    this.showDialog = true;
+  }
+
+  closeDialog(): void {
+    this.showDialog = false;
+  }
+
   async addPrice(): Promise<void> {
     if (this.newPrice === null || this.newPrice < 0) {
       this.errorMessage = 'Please enter a valid price';
@@ -102,9 +115,9 @@ export class ProductPrices implements OnInit {
       this.errorMessage = error.message || 'Failed to create price';
     } else if (data) {
       this.prices.unshift(data);
-      this.newPrice = null;
       this.successMessage = 'Price added successfully';
       setTimeout(() => this.successMessage = '', 3000);
+      this.closeDialog();
     }
 
     this.isLoading = false;

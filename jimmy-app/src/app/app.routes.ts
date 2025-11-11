@@ -22,6 +22,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'campaigns',
+    loadComponent: () => import('./pages/campaigns/campaigns').then(m => m.Campaigns),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'campaigns/:id/details',
+    loadComponent: () => import('./pages/campaign-details/campaign-details').then(m => m.CampaignDetails),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: '/products'
   }

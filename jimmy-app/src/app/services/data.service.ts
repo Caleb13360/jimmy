@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
-import { Database, Product, ProductPrice } from '../types/database.types';
+import { Database, Product, ProductPrice, Campaign, CampaignDailySpend } from '../types/database.types';
 
 @Injectable({
   providedIn: 'root'
@@ -91,6 +91,132 @@ export class DataService {
   async deleteProductPrice(id: string): Promise<{ error: any }> {
     const { error } = await this.supabase
       .from('product_prices')
+      .delete()
+      .eq('id', id);
+
+    return { error };
+  }
+
+  // Campaign CRUD operations
+  async getCampaigns(): Promise<{ data: any[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaigns')
+      .select(`
+        *,
+        campaign_daily_spend(amount)
+      `)
+      .order('start_date', { ascending: false });
+
+    return { data, error };
+  }
+
+  async getCampaign(id: string): Promise<{ data: Campaign | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    return { data, error };
+  }
+
+  async createCampaign(name: string, start_date: string, duration_days: number): Promise<{ data: Campaign | null; error: any }> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+
+    if (!user) {
+      return { data: null, error: { message: 'User not authenticated' } };
+    }
+
+    // Create the campaign
+    const { data, error } = await this.supabase
+      .from('campaigns')
+      .insert({ name, start_date, duration_days, user_id: user.id })
+      .select()
+      .single();
+
+    if (error || !data) {
+      return { data, error };
+    }
+
+    // Create daily spend rows for each day in the campaign
+    const dailySpendRows: { campaign_id: string; spend_date: string; amount: number | null }[] = [];
+
+    // Parse the start_date string (YYYY-MM-DD) to avoid timezone issues
+    const [year, month, day] = start_date.split('-').map(Number);
+
+    for (let i = 0; i < duration_days; i++) {
+      // Create date in local timezone
+      const currentDate = new Date(year, month - 1, day + i);
+      const dateYear = currentDate.getFullYear();
+      const dateMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const dateDay = String(currentDate.getDate()).padStart(2, '0');
+      const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+
+      dailySpendRows.push({
+        campaign_id: data.id,
+        spend_date: dateStr,
+        amount: null
+      });
+    }
+
+    // Insert all daily spend rows
+    const { error: spendError } = await this.supabase
+      .from('campaign_daily_spend')
+      .insert(dailySpendRows);
+
+    if (spendError) {
+      // If daily spend creation fails, we still return the campaign
+      // but log the error
+      console.error('Failed to create daily spend rows:', spendError);
+    }
+
+    return { data, error };
+  }
+
+  async updateCampaign(id: string, updates: { name?: string; start_date?: string; duration_days?: number; cpm?: number | null }): Promise<{ data: Campaign | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaigns')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  async deleteCampaign(id: string): Promise<{ error: any }> {
+    const { error } = await this.supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', id);
+
+    return { error };
+  }
+
+  // Campaign Daily Spend CRUD operations
+  async getCampaignDailySpend(campaignId: string): Promise<{ data: CampaignDailySpend[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaign_daily_spend')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('spend_date', { ascending: true });
+
+    return { data, error };
+  }
+
+  async upsertDailySpend(campaignId: string, spend_date: string, amount: number): Promise<{ data: CampaignDailySpend | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('campaign_daily_spend')
+      .upsert({ campaign_id: campaignId, spend_date, amount }, { onConflict: 'campaign_id,spend_date' })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  async deleteDailySpend(id: string): Promise<{ error: any }> {
+    const { error } = await this.supabase
+      .from('campaign_daily_spend')
       .delete()
       .eq('id', id);
 

@@ -7,6 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
+import { DialogModule } from 'primeng/dialog';
 import { DataService } from '../../services/data.service';
 import { Product } from '../../types/database.types';
 
@@ -21,7 +22,8 @@ import { Product } from '../../types/database.types';
     ButtonModule,
     InputTextModule,
     CardModule,
-    MessageModule
+    MessageModule,
+    DialogModule
   ],
   templateUrl: './products.html',
   styleUrl: './products.css',
@@ -32,6 +34,7 @@ export class Products implements OnInit {
   isLoading = false;
   errorMessage = '';
   successMessage = '';
+  showDialog = false;
 
   constructor(private dataService: DataService) {}
 
@@ -54,6 +57,16 @@ export class Products implements OnInit {
     this.isLoading = false;
   }
 
+  openAddDialog(): void {
+    this.newProductName = '';
+    this.errorMessage = '';
+    this.showDialog = true;
+  }
+
+  closeDialog(): void {
+    this.showDialog = false;
+  }
+
   async addProduct(): Promise<void> {
     if (!this.newProductName.trim()) {
       this.errorMessage = 'Product name is required';
@@ -71,9 +84,9 @@ export class Products implements OnInit {
     } else if (data) {
       // Reload products to get the updated count
       await this.loadProducts();
-      this.newProductName = '';
       this.successMessage = 'Product added successfully';
       setTimeout(() => this.successMessage = '', 3000);
+      this.closeDialog();
     }
 
     this.isLoading = false;

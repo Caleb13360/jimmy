@@ -2,43 +2,29 @@
   <div class="max-w-4xl mx-auto">
     <p-card>
       <ng-template #header>
-        <div class="p-4">
+        <div class="p-4 flex justify-between items-center">
           <h2 class="text-2xl font-bold m-0">Products</h2>
-        </div>
-      </ng-template>
-
-      <div class="mb-4">
-        <p-message
-          *ngIf="errorMessage"
-          severity="error"
-          [text]="errorMessage"
-          styleClass="w-full mb-4">
-        </p-message>
-
-        <p-message
-          *ngIf="successMessage"
-          severity="success"
-          [text]="successMessage"
-          styleClass="w-full mb-4">
-        </p-message>
-
-        <div class="flex gap-2">
-          <input
-            pInputText
-            type="text"
-            [(ngModel)]="newProductName"
-            placeholder="Enter product name"
-            class="flex-1"
-            [disabled]="isLoading"
-            (keyup.enter)="addProduct()" />
           <p-button
             label="Add Product"
             icon="pi pi-plus"
-            [loading]="isLoading"
-            (onClick)="addProduct()">
+            (onClick)="openAddDialog()">
           </p-button>
         </div>
-      </div>
+      </ng-template>
+
+      <p-message
+        *ngIf="errorMessage"
+        severity="error"
+        [text]="errorMessage"
+        styleClass="w-full mb-4">
+      </p-message>
+
+      <p-message
+        *ngIf="successMessage"
+        severity="success"
+        [text]="successMessage"
+        styleClass="w-full mb-4">
+      </p-message>
 
       <p-table
         [value]="products"
@@ -79,3 +65,51 @@
     </p-card>
   </div>
 </div>
+
+<!-- Add Product Dialog -->
+<p-dialog
+  [(visible)]="showDialog"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-md">
+  <ng-template #header>
+    <h3 class="text-xl font-bold m-0">Add Product</h3>
+  </ng-template>
+
+  <div class="flex flex-col gap-4">
+    <p-message
+      *ngIf="errorMessage"
+      severity="error"
+      [text]="errorMessage"
+      styleClass="w-full">
+    </p-message>
+
+    <div class="flex flex-col gap-2">
+      <label for="productName">Product Name</label>
+      <input
+        id="productName"
+        pInputText
+        type="text"
+        [(ngModel)]="newProductName"
+        placeholder="Enter product name"
+        [disabled]="isLoading" />
+    </div>
+  </div>
+
+  <ng-template #footer>
+    <p-button
+      label="Cancel"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="closeDialog()"
+      [disabled]="isLoading">
+    </p-button>
+    <p-button
+      label="Add Product"
+      (onClick)="addProduct()"
+      [loading]="isLoading">
+    </p-button>
+  </ng-template>
+</p-dialog>

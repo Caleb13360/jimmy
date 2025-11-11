@@ -4,44 +4,29 @@
 
     <p-card styleClass="mt-4">
       <ng-template #header>
-        <div class="p-4">
+        <div class="p-4 flex justify-between items-center">
           <h2 class="text-2xl font-bold m-0">{{ product?.name }} - Prices</h2>
-        </div>
-      </ng-template>
-
-      <div class="mb-4">
-        <p-message
-          *ngIf="errorMessage"
-          severity="error"
-          [text]="errorMessage"
-          styleClass="w-full mb-4">
-        </p-message>
-
-        <p-message
-          *ngIf="successMessage"
-          severity="success"
-          [text]="successMessage"
-          styleClass="w-full mb-4">
-        </p-message>
-
-        <div class="flex gap-2">
-          <p-inputNumber
-            [(ngModel)]="newPrice"
-            mode="currency"
-            currency="USD"
-            placeholder="Enter price"
-            class="flex-1"
-            [disabled]="isLoading"
-            (onKeyDown)="$event.key === 'Enter' && addPrice()">
-          </p-inputNumber>
           <p-button
             label="Add Price"
             icon="pi pi-plus"
-            [loading]="isLoading"
-            (onClick)="addPrice()">
+            (onClick)="openAddDialog()">
           </p-button>
         </div>
-      </div>
+      </ng-template>
+
+      <p-message
+        *ngIf="errorMessage"
+        severity="error"
+        [text]="errorMessage"
+        styleClass="w-full mb-4">
+      </p-message>
+
+      <p-message
+        *ngIf="successMessage"
+        severity="success"
+        [text]="successMessage"
+        styleClass="w-full mb-4">
+      </p-message>
 
       <p-table
         [value]="prices"
@@ -80,3 +65,52 @@
     </p-card>
   </div>
 </div>
+
+<!-- Add Price Dialog -->
+<p-dialog
+  [(visible)]="showDialog"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-md">
+  <ng-template #header>
+    <h3 class="text-xl font-bold m-0">Add Price</h3>
+  </ng-template>
+
+  <div class="flex flex-col gap-4">
+    <p-message
+      *ngIf="errorMessage"
+      severity="error"
+      [text]="errorMessage"
+      styleClass="w-full">
+    </p-message>
+
+    <div class="flex flex-col gap-2">
+      <label for="price">Price</label>
+      <p-inputNumber
+        id="price"
+        [(ngModel)]="newPrice"
+        mode="currency"
+        currency="USD"
+        placeholder="Enter price"
+        [disabled]="isLoading">
+      </p-inputNumber>
+    </div>
+  </div>
+
+  <ng-template #footer>
+    <p-button
+      label="Cancel"
+      severity="secondary"
+      [outlined]="true"
+      (onClick)="closeDialog()"
+      [disabled]="isLoading">
+    </p-button>
+    <p-button
+      label="Add Price"
+      (onClick)="addPrice()"
+      [loading]="isLoading">
+    </p-button>
+  </ng-template>
+</p-dialog>
