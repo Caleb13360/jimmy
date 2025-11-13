@@ -62,11 +62,23 @@ export class Analytics implements OnInit {
   customDateRange: Date[] | null = null;
   showCustomDatePicker: boolean = false;
 
+  chartTypeOptions: { label: string; value: 'line' | 'bar' }[] = [
+    { label: 'Line', value: 'line' },
+    { label: 'Bar', value: 'bar' }
+  ];
+  selectedChartType: 'line' | 'bar' = 'line';
+
   metricOptions: MetricOption[] = [
     { label: '$', value: 'revenue' },
     { label: 'Qty', value: 'quantity' }
   ];
   selectedMetric: 'revenue' | 'quantity' = 'revenue';
+
+  campaignFilterOptions: { label: string; value: string | null }[] = [{ label: 'All Campaigns', value: null }];
+  selectedCampaignFilter: string | null = null;
+
+  productFilterOptions: { label: string; value: number | null }[] = [{ label: 'All Products', value: null }];
+  selectedProductFilter: number | null = null;
 
   private _activeTabValue: string = '0';
 
@@ -113,6 +125,10 @@ export class Analytics implements OnInit {
     }
   }
 
+  onChartTypeChange(): void {
+    this.updateChartForMetric();
+  }
+
   onMetricChange(): void {
     this.updateChartForMetric();
   }
@@ -120,6 +136,10 @@ export class Analytics implements OnInit {
   onTabChange(event: any): void {
     // Note: The activeTabValue setter will automatically handle the chart update
     // This is just a fallback handler
+  }
+
+  onFilterChange(): void {
+    this.updateChartForMetric();
   }
 
   onCustomDateRangeChange(): void {
@@ -240,7 +260,7 @@ export class Analytics implements OnInit {
       // Build query with optional date filters
       let query = this.supabase
         .from('sales')
-        .select('date_created, order_total')
+        .select('id, date_created, order_total')
         .eq('user_id', this.currentUser.id);
 
       if (startDate) {
@@ -283,12 +303,25 @@ export class Analytics implements OnInit {
       .eq('user_id', this.currentUser.id);
     this.campaignsCache = campaigns || [];
 
+    // Populate campaign filter options
+    this.campaignFilterOptions = [
+      { label: 'All Campaigns', value: null },
+      { label: 'Organic', value: 'organic' },
+      ...this.campaignsCache.map(c => ({ label: c.name, value: c.id }))
+    ];
+
     // Load products
     const { data: products } = await this.supabase
       .from('products')
       .select('id, name')
       .eq('user_id', this.currentUser.id);
     this.productsCache = products || [];
+
+    // Populate product filter options
+    this.productFilterOptions = [
+      { label: 'All Products', value: null },
+      ...this.productsCache.map(p => ({ label: p.name, value: p.id }))
+    ];
   }
 
   async loadSalesWithCampaigns(): Promise<void> {
@@ -297,7 +330,7 @@ export class Analytics implements OnInit {
     const { startDate, endDate } = this.getDateRangeFilter();
     let query = this.supabase
       .from('sales')
-      .select('date_created, order_total, campaign_id')
+      .select('id, date_created, order_total, campaign_id')
       .eq('user_id', this.currentUser.id);
 
     if (startDate) {
@@ -351,10 +384,31 @@ export class Analytics implements OnInit {
   }
 
   processAllSalesData(sales: any[]): void {
+    // Apply filters to sales data
+    let filteredSales = sales;
+
+    // Filter by campaign if selected
+    if (this.selectedCampaignFilter !== null) {
+      filteredSales = this.salesWithCampaignsCache.filter(sale => {
+        const campaignId = sale.campaign_id || 'organic';
+        return campaignId === this.selectedCampaignFilter;
+      });
+    }
+
+    // Filter by product if selected
+    if (this.selectedProductFilter !== null) {
+      // Get sale IDs for the selected product
+      const saleIdsWithProduct = this.saleItemsCache
+        .filter(item => item.product_id === this.selectedProductFilter)
+        .map(item => item.sale_id);
+
+      filteredSales = filteredSales.filter(sale => saleIdsWithProduct.includes(sale.id));
+    }
+
     // Group sales by date - track both revenue and quantity
     const dailySalesMap = new Map<string, { revenue: number; count: number }>();
 
-    sales.forEach(sale => {
+    filteredSales.forEach(sale => {
       const date = sale.date_created.split('T')[0]; // Extract date part (YYYY-MM-DD)
       const current = dailySalesMap.get(date) || { revenue: 0, count: 0 };
       dailySalesMap.set(date, {
@@ -420,15 +474,17 @@ export class Analytics implements OnInit {
     // Format dates for display
     const formattedDates = allDatesInRange.map(date => this.formatDateForDisplay(date));
 
+    const isBarChart = this.selectedChartType === 'bar';
+
     this.chartData = {
       labels: formattedDates,
       datasets: [{
         label: isRevenue ? 'Daily Sales ($)' : 'Daily Sales (Qty)',
         data: allValues,
         borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        backgroundColor: isBarChart ? 'rgb(75, 192, 192)' : 'rgba(75, 192, 192, 0.2)',
         tension: 0.4,
-        fill: true,
+        fill: !isBarChart,
         pointRadius: 4,
         pointHoverRadius: 6,
         pointBackgroundColor: 'rgb(75, 192, 192)',
@@ -444,10 +500,19 @@ export class Analytics implements OnInit {
       const { startDate: filterStartDate, endDate: filterEndDate } = this.getDateRangeFilter();
 
       // Use cached sales with campaign data
-      const salesWithCampaigns = this.salesWithCampaignsCache;
+      let salesWithCampaigns = this.salesWithCampaignsCache;
       if (!salesWithCampaigns || salesWithCampaigns.length === 0) {
         this.chartData = { labels: [], datasets: [] };
         return;
+      }
+
+      // Filter by product if selected
+      if (this.selectedProductFilter !== null) {
+        const saleIdsWithProduct = this.saleItemsCache
+          .filter(item => item.product_id === this.selectedProductFilter)
+          .map(item => item.sale_id);
+
+        salesWithCampaigns = salesWithCampaigns.filter(sale => saleIdsWithProduct.includes(sale.id));
       }
 
     // Group by campaign and date
@@ -513,11 +578,12 @@ export class Analytics implements OnInit {
       });
 
       const color = colors[colorIndex % colors.length];
+      const isBarChart = this.selectedChartType === 'bar';
       datasets.push({
         label: campaignName,
         data: data,
         borderColor: color,
-        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
+        backgroundColor: isBarChart ? color : color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
         tension: 0.4,
         fill: false,
         pointRadius: 3,
@@ -542,10 +608,22 @@ export class Analytics implements OnInit {
       const { startDate: filterStartDate, endDate: filterEndDate } = this.getDateRangeFilter();
 
       // Use cached sale items data
-      const saleItems = this.saleItemsCache;
+      let saleItems = this.saleItemsCache;
       if (!saleItems || saleItems.length === 0) {
         this.chartData = { labels: [], datasets: [] };
         return;
+      }
+
+      // Filter by campaign if selected
+      if (this.selectedCampaignFilter !== null) {
+        const saleIdsInCampaign = this.salesWithCampaignsCache
+          .filter(sale => {
+            const campaignId = sale.campaign_id || 'organic';
+            return campaignId === this.selectedCampaignFilter;
+          })
+          .map(sale => sale.id);
+
+        saleItems = saleItems.filter(item => saleIdsInCampaign.includes(item.sale_id));
       }
 
     // Group by product and date
@@ -609,11 +687,12 @@ export class Analytics implements OnInit {
       });
 
       const color = colors[colorIndex % colors.length];
+      const isBarChart = this.selectedChartType === 'bar';
       datasets.push({
         label: productName,
         data: data,
         borderColor: color,
-        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
+        backgroundColor: isBarChart ? color : color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
         tension: 0.4,
         fill: false,
         pointRadius: 3,
