@@ -86,6 +86,49 @@
         styleClass="w-full mb-4">
       </p-message>
 
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 mb-1">Total Purchases</p>
+              <p class="text-2xl font-bold text-blue-600">{{ totalPurchases }}</p>
+            </div>
+            <i class="pi pi-shopping-cart text-3xl text-blue-400"></i>
+          </div>
+        </div>
+
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 mb-1">Total Sales</p>
+              <p class="text-2xl font-bold text-green-600">${{ totalSales.toFixed(2) }}</p>
+            </div>
+            <i class="pi pi-dollar text-3xl text-green-400"></i>
+          </div>
+        </div>
+
+        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 mb-1">Avg Order Value</p>
+              <p class="text-2xl font-bold text-purple-600">${{ averageOrderValue.toFixed(2) }}</p>
+            </div>
+            <i class="pi pi-chart-line text-3xl text-purple-400"></i>
+          </div>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-gray-600 mb-1">Products Sold</p>
+              <p class="text-2xl font-bold text-orange-600">{{ totalProductsSold }}</p>
+            </div>
+            <i class="pi pi-box text-3xl text-orange-400"></i>
+          </div>
+        </div>
+      </div>
+
       <p-tabs [(value)]="activeTabValue" (onChange)="onTabChange($event)">
         <p-tablist>
           <p-tab value="0">All</p-tab>

@@ -105,6 +105,12 @@ export class Analytics implements OnInit {
   private saleItemsCache: any[] = [];
   private currentUser: any = null;
 
+  // Stats
+  totalPurchases: number = 0;
+  totalSales: number = 0;
+  averageOrderValue: number = 0;
+  totalProductsSold: number = 0;
+
   constructor() {
     this.supabase = createClient(
       environment.supabase.url,
@@ -284,6 +290,7 @@ export class Analytics implements OnInit {
         await this.loadCampaignsAndProducts();
         await this.loadSalesWithCampaigns();
         await this.loadSaleItems();
+        this.calculateStats();
         this.processSalesData(this.salesDataCache);
       }
     } catch (error: any) {
@@ -370,7 +377,49 @@ export class Analytics implements OnInit {
 
   updateChartForMetric(): void {
     this.updateChartOptions();
+    this.calculateStats();
     this.processSalesData(this.salesDataCache);
+  }
+
+  calculateStats(): void {
+    // Get filtered sales based on current filters
+    let filteredSales = this.salesDataCache;
+
+    // Apply campaign filter
+    if (this.selectedCampaignFilter !== null) {
+      filteredSales = this.salesWithCampaignsCache.filter(sale => {
+        const campaignId = sale.campaign_id || 'organic';
+        return campaignId === this.selectedCampaignFilter;
+      });
+    }
+
+    // Apply product filter
+    if (this.selectedProductFilter !== null) {
+      const saleIdsWithProduct = this.saleItemsCache
+        .filter(item => item.product_id === this.selectedProductFilter)
+        .map(item => item.sale_id);
+      filteredSales = filteredSales.filter(sale => saleIdsWithProduct.includes(sale.id));
+    }
+
+    // Calculate total purchases (count of sales)
+    this.totalPurchases = filteredSales.length;
+
+    // Calculate total sales revenue
+    this.totalSales = filteredSales.reduce((sum, sale) => sum + sale.order_total, 0);
+
+    // Calculate average order value
+    this.averageOrderValue = this.totalPurchases > 0 ? this.totalSales / this.totalPurchases : 0;
+
+    // Calculate total products sold (sum of quantities)
+    let filteredItems = this.saleItemsCache;
+    if (this.selectedProductFilter !== null) {
+      filteredItems = filteredItems.filter(item => item.product_id === this.selectedProductFilter);
+    }
+    if (this.selectedCampaignFilter !== null || filteredSales.length < this.salesDataCache.length) {
+      const saleIds = filteredSales.map(sale => sale.id);
+      filteredItems = filteredItems.filter(item => saleIds.includes(item.sale_id));
+    }
+    this.totalProductsSold = filteredItems.reduce((sum, item) => sum + item.quantity, 0);
   }
 
   processSalesData(sales: any[]): void {
