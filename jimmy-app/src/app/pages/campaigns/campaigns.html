@@ -1,13 +1,13 @@
 <div class="p-4 md:p-8">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-full mx-auto">
     <p-card>
       <ng-template #header>
         <div class="p-4 flex justify-between items-center">
           <h2 class="text-2xl font-bold m-0">Campaigns</h2>
           <p-button
-            label="Add Campaign"
-            icon="pi pi-plus"
-            (onClick)="openAddDialog()">
+            label="Refresh"
+            icon="pi pi-refresh"
+            (onClick)="loadCampaigns()">
           </p-button>
         </div>
       </ng-template>
@@ -19,58 +19,65 @@
         styleClass="w-full mb-4">
       </p-message>
 
-      <p-message
-        *ngIf="successMessage"
-        severity="success"
-        [text]="successMessage"
-        styleClass="w-full mb-4">
-      </p-message>
-
       <p-table
         [value]="campaigns"
         [loading]="isLoading"
+        [scrollable]="true"
+        scrollHeight="600px"
         styleClass="p-datatable-sm">
         <ng-template #header>
           <tr>
-            <th>Name</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Duration (Days)</th>
-            <th>Total Spend</th>
+            <th>Campaign Name</th>
+            <th>Budget</th>
+            <th>Spend</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>Purchases</th>
+            <th>Revenue</th>
             <th>CPM</th>
-            <th>Status</th>
-            <th style="width: 100px">Actions</th>
+            <th>ROAS</th>
+            <th>CTR</th>
+            <th>CPC</th>
+            <th>Cost/Purchase</th>
+            <th>AOV</th>
+            <th>Conv. Rate</th>
           </tr>
         </ng-template>
         <ng-template #body let-campaign>
-          <tr [routerLink]="['/campaigns', campaign.id, 'details']" style="cursor: pointer">
+          <tr>
             <td>{{ campaign.name }}</td>
-            <td>{{ campaign.start_date | date:'dd/MM/yyyy' }}</td>
-            <td>{{ getEndDate(campaign) | date:'dd/MM/yyyy' }}</td>
-            <td>{{ campaign.duration_days }}</td>
-            <td>{{ getTotalSpend(campaign) | currency }}</td>
-            <td>{{ campaign.cpm !== null ? (campaign.cpm | currency:'USD':'symbol':'1.2-4') : '-' }}</td>
+            <td>{{ campaign.budget ? formatCurrency(campaign.budget) : '-' }}</td>
+            <td>{{ formatCurrency(campaign.spend) }}</td>
+            <td>{{ formatNumber(campaign.impressions) }}</td>
+            <td>{{ formatNumber(campaign.clicks) }}</td>
+            <td>{{ campaign.purchases }}</td>
+            <td>{{ formatCurrency(campaign.purchase_value) }}</td>
+            <td>{{ campaign.cpm > 0 ? formatCurrency(campaign.cpm) : '-' }}</td>
             <td>
               <p-tag
-                [value]="getCampaignStatus(campaign)"
-                [severity]="getStatusSeverity(getCampaignStatus(campaign))">
+                *ngIf="campaign.roas > 0"
+                [value]="formatDecimal(campaign.roas, 2)"
+                [severity]="getROASSeverity(campaign.roas)">
               </p-tag>
+              <span *ngIf="campaign.roas === 0">-</span>
             </td>
-            <td>
-              <p-button
-                icon="pi pi-trash"
-                severity="danger"
-                [outlined]="true"
-                size="small"
-                (onClick)="deleteCampaign(campaign.id); $event.stopPropagation()">
-              </p-button>
-            </td>
+            <td>{{ campaign.ctr > 0 ? formatPercent(campaign.ctr) : '-' }}</td>
+            <td>{{ campaign.cpc > 0 ? formatCurrency(campaign.cpc) : '-' }}</td>
+            <td>{{ campaign.cost_per_purchase > 0 ? formatCurrency(campaign.cost_per_purchase) : '-' }}</td>
+            <td>{{ campaign.avg_order_value > 0 ? formatCurrency(campaign.avg_order_value) : '-' }}</td>
+            <td>{{ campaign.conversion_rate > 0 ? formatPercent(campaign.conversion_rate) : '-' }}</td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="8" class="text-center">
-              No campaigns found. Add your first campaign above.
+            <td colspan="14" class="text-center py-8">
+              <div class="flex flex-col items-center gap-4">
+                <i class="pi pi-inbox text-4xl text-gray-400"></i>
+                <div>
+                  <p class="text-lg font-semibold mb-2">No campaigns found</p>
+                  <p class="text-gray-600">Sync your campaigns from the Sync page to see them here.</p>
+                </div>
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -78,75 +85,3 @@
     </p-card>
   </div>
 </div>
-
-<!-- Add Campaign Dialog -->
-<p-dialog
-  [(visible)]="showDialog"
-  [modal]="true"
-  [closable]="true"
-  [draggable]="false"
-  [resizable]="false"
-  styleClass="w-full max-w-md">
-  <ng-template #header>
-    <h3 class="text-xl font-bold m-0">Add Campaign</h3>
-  </ng-template>
-
-  <div class="flex flex-col gap-4">
-    <p-message
-      *ngIf="errorMessage"
-      severity="error"
-      [text]="errorMessage"
-      styleClass="w-full">
-    </p-message>
-
-    <div class="flex flex-col gap-2">
-      <label for="campaignName">Campaign Name</label>
-      <input
-        id="campaignName"
-        pInputText
-        type="text"
-        [(ngModel)]="newCampaignName"
-        placeholder="Enter campaign name"
-        [disabled]="isLoading" />
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="startDate">Start Date</label>
-      <p-datepicker
-        inputId="startDate"
-        [(ngModel)]="newCampaignStartDate"
-        [showIcon]="true"
-        dateFormat="yy-mm-dd"
-        [disabled]="isLoading"
-        appendTo="body">
-      </p-datepicker>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="duration">Duration (Days)</label>
-      <p-inputNumber
-        id="duration"
-        [(ngModel)]="newCampaignDuration"
-        [min]="1"
-        [showButtons]="true"
-        placeholder="Enter duration"
-        [disabled]="isLoading">
-      </p-inputNumber>
-    </div>
-  </div>
-
-  <ng-template #footer>
-    <p-button
-      label="Cancel"
-      severity="secondary"
-      [outlined]="true"
-      (onClick)="closeDialog()"
-      [disabled]="isLoading">
-    </p-button>
-    <p-button
-      label="Add Campaign"
-      (onClick)="addCampaign()"
-      [loading]="isLoading">
-    </p-button>
-  </ng-template>
-</p-dialog>

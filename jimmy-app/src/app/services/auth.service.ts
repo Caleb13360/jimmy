@@ -8,8 +8,9 @@ import { environment } from '../../environments/environment';
 })
 export class AuthService {
   private supabase: SupabaseClient;
-  private currentUserSubject: BehaviorSubject<User | null>;
-  public currentUser$: Observable<User | null>;
+  private currentUserSubject: BehaviorSubject<User | null | undefined>;
+  public currentUser$: Observable<User | null | undefined>;
+  private authInitialized = false;
 
   constructor() {
     this.supabase = createClient(
@@ -17,7 +18,8 @@ export class AuthService {
       environment.supabase.anonKey
     );
 
-    this.currentUserSubject = new BehaviorSubject<User | null>(null);
+    // Start with undefined to indicate "not yet initialized"
+    this.currentUserSubject = new BehaviorSubject<User | null | undefined>(undefined);
     this.currentUser$ = this.currentUserSubject.asObservable();
 
     // Initialize auth state
@@ -27,6 +29,7 @@ export class AuthService {
   private async initializeAuthState(): Promise<void> {
     const { data: { session } } = await this.supabase.auth.getSession();
     this.currentUserSubject.next(session?.user ?? null);
+    this.authInitialized = true;
 
     // Listen for auth changes
     this.supabase.auth.onAuthStateChange((_event, session) => {
@@ -60,11 +63,12 @@ export class AuthService {
     return { error };
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): User | null | undefined {
     return this.currentUserSubject.value;
   }
 
   isAuthenticated(): boolean {
-    return this.currentUserSubject.value !== null;
+    // Return false if not initialized yet or if user is null
+    return this.authInitialized && this.currentUserSubject.value !== null;
   }
 }

@@ -21,7 +21,7 @@ import { User } from '@supabase/supabase-js';
   styleUrl: './nav.component.css'
 })
 export class NavComponent implements OnInit {
-  currentUser: User | null = null;
+  currentUser: User | null | undefined = undefined;
 
   constructor(
     private authService: AuthService,

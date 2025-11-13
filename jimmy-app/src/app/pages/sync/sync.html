@@ -1,0 +1,368 @@
+<div class="sync-page">
+  <h1>Sync Data from External Sources</h1>
+  <p class="subtitle">Connect to Meta Ads and WooCommerce to view and sync your campaign and sales data</p>
+
+  <div class="sync-grid">
+    <!-- META ADS SECTION -->
+    <div class="sync-section">
+      <p-card header="Meta Ads API">
+        <p-fieldset legend="Connection Settings" [toggleable]="true">
+          <div class="form-field">
+            <label for="meta-token">Access Token</label>
+            <input
+              pInputText
+              id="meta-token"
+              [(ngModel)]="metaToken"
+              placeholder="Enter your Meta API access token"
+              [style]="{'width': '100%'}"
+              type="password"
+            />
+            <small class="form-hint">Loaded from database (changes not saved)</small>
+          </div>
+
+          <div class="form-field">
+            <label for="meta-account">Ad Account ID</label>
+            <input
+              pInputText
+              id="meta-account"
+              [(ngModel)]="metaAccountId"
+              placeholder="e.g., 642073175269457"
+              [style]="{'width': '100%'}"
+            />
+            <small class="form-hint">Loaded from database (changes not saved)</small>
+          </div>
+
+          <div class="button-group">
+            <p-button
+              label="Test Connection"
+              icon="pi pi-check-circle"
+              [disabled]="metaLoading"
+              (onClick)="testMetaConnection()"
+              severity="secondary"
+            ></p-button>
+            <p-button
+              label="Fetch Campaigns"
+              icon="pi pi-download"
+              [disabled]="metaLoading"
+              [loading]="metaLoading"
+              (onClick)="fetchMetaCampaigns()"
+            ></p-button>
+          </div>
+
+          <p-message *ngIf="metaSuccess" severity="success" [text]="metaSuccess"></p-message>
+          <p-message *ngIf="metaError" severity="error" [text]="metaError"></p-message>
+        </p-fieldset>
+
+        <p-divider></p-divider>
+
+        <div *ngIf="metaCampaigns.length > 0">
+          <div class="section-header">
+            <h3>Campaigns ({{metaCampaigns.length}})</h3>
+            <p-button
+              [label]="showMetaRawJson ? 'Hide JSON' : 'View Raw JSON'"
+              icon="pi pi-code"
+              [outlined]="true"
+              size="small"
+              (onClick)="toggleMetaRawJson()"
+            ></p-button>
+          </div>
+
+          <div *ngIf="showMetaRawJson" class="json-viewer">
+            <pre>{{ {campaigns: metaCampaigns} | json }}</pre>
+          </div>
+
+          <p-table
+            *ngIf="!showMetaRawJson"
+            [value]="metaCampaigns"
+            [paginator]="true"
+            [rows]="10"
+            [tableStyle]="{'min-width': '50rem'}"
+            styleClass="p-datatable-sm"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Campaign Name</th>
+                <th>Status</th>
+                <th>Objective</th>
+                <th>Budget</th>
+                <th>Spend</th>
+                <th>Impressions</th>
+                <th>CPM</th>
+                <th>Clicks</th>
+                <th>Purchases</th>
+                <th>ROAS</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-campaign>
+              <tr>
+                <td>
+                  <div class="campaign-name">
+                    {{campaign.name}}
+                    <small>ID: {{campaign.id}}</small>
+                  </div>
+                </td>
+                <td>
+                  <p-tag [value]="campaign.status" [severity]="getMetaStatusSeverity(campaign.status)"></p-tag>
+                </td>
+                <td>{{campaign.objective}}</td>
+                <td>{{formatMetaBudget(campaign.daily_budget)}}/day</td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight">
+                    {{formatMetaCurrency(insight.spend)}}
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight">
+                    {{formatMetaNumber(insight.impressions)}}
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight">
+                    {{formatMetaCurrency(insight.cpm)}}
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight">
+                    {{formatMetaNumber(insight.clicks)}}
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight">
+                    {{getPurchaseCount(insight)}}
+                    <small *ngIf="getPurchaseValue(insight) > 0">({{formatMetaCurrency(getPurchaseValue(insight).toString())}})</small>
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+                <td>
+                  <span *ngIf="getMetaInsight(campaign.id) as insight" class="roas-badge">
+                    {{calculateROAS(insight)}}
+                  </span>
+                  <span *ngIf="!getMetaInsight(campaign.id)">-</span>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="10">No campaigns found</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="expansion" let-campaign>
+              <div *ngIf="getMetaInsight(campaign.id) as insight" class="campaign-details">
+                <h4>Performance Metrics</h4>
+                <div class="metrics-grid">
+                  <div class="metric">
+                    <label>Impressions</label>
+                    <span>{{formatMetaNumber(insight.impressions)}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>Reach</label>
+                    <span>{{formatMetaNumber(insight.reach)}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>Frequency</label>
+                    <span>{{insight.frequency || 'N/A'}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>CTR</label>
+                    <span>{{formatMetaPercentage(insight.ctr)}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>CPC</label>
+                    <span>{{formatMetaCurrency(insight.cpc)}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>CPM (per 1K impressions)</label>
+                    <span>{{formatMetaCurrency(insight.cpm)}}</span>
+                  </div>
+                  <div class="metric">
+                    <label>CPP (per 1K people)</label>
+                    <span>{{formatMetaCurrency(insight.cpp)}}</span>
+                  </div>
+                </div>
+              </div>
+            </ng-template>
+          </p-table>
+        </div>
+      </p-card>
+    </div>
+
+    <!-- WOOCOMMERCE SECTION -->
+    <div class="sync-section">
+      <p-card header="WooCommerce API">
+        <p-fieldset legend="Connection Settings" [toggleable]="true">
+          <div class="form-field">
+            <label for="woo-url">Store URL</label>
+            <input
+              pInputText
+              id="woo-url"
+              [(ngModel)]="wooUrl"
+              placeholder="https://yourstore.com"
+              [style]="{'width': '100%'}"
+            />
+            <small class="form-hint">Loaded from database (changes not saved)</small>
+          </div>
+
+          <div class="form-field">
+            <label for="woo-key">Consumer Key</label>
+            <input
+              pInputText
+              id="woo-key"
+              [(ngModel)]="wooKey"
+              placeholder="ck_xxxxx"
+              [style]="{'width': '100%'}"
+            />
+            <small class="form-hint">Loaded from database (changes not saved)</small>
+          </div>
+
+          <div class="form-field">
+            <label for="woo-secret">Consumer Secret</label>
+            <input
+              pInputText
+              id="woo-secret"
+              [(ngModel)]="wooSecret"
+              placeholder="cs_xxxxx"
+              [style]="{'width': '100%'}"
+              type="password"
+            />
+            <small class="form-hint">Loaded from database (changes not saved)</small>
+          </div>
+
+          <div class="form-field">
+            <label for="woo-dates">Date Range (Optional)</label>
+            <p-datepicker
+              [(ngModel)]="wooDateRange"
+              selectionMode="range"
+              [style]="{'width': '100%'}"
+            ></p-datepicker>
+            <small class="form-hint">Leave empty to fetch all orders</small>
+          </div>
+
+          <div class="button-group">
+            <p-button
+              label="Test Connection"
+              icon="pi pi-check-circle"
+              [disabled]="wooLoading"
+              (onClick)="testWooConnection()"
+              severity="secondary"
+            ></p-button>
+            <p-button
+              label="Fetch Orders"
+              icon="pi pi-download"
+              [disabled]="wooLoading"
+              [loading]="wooLoading"
+              (onClick)="fetchWooOrders()"
+            ></p-button>
+          </div>
+
+          <p-message *ngIf="wooSuccess" severity="success" [text]="wooSuccess"></p-message>
+          <p-message *ngIf="wooError" severity="error" [text]="wooError"></p-message>
+        </p-fieldset>
+
+        <p-divider></p-divider>
+
+        <div *ngIf="wooSummary">
+          <h3>Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <span class="summary-label">Total Orders</span>
+              <span class="summary-value">{{wooSummary.total_orders}}</span>
+            </div>
+            <div class="summary-card">
+              <span class="summary-label">With UTM Tracking</span>
+              <span class="summary-value">{{wooSummary.orders_with_utm}}</span>
+            </div>
+            <div class="summary-card">
+              <span class="summary-label">Without UTM</span>
+              <span class="summary-value">{{wooSummary.orders_without_utm}}</span>
+            </div>
+            <div class="summary-card">
+              <span class="summary-label">Unique Campaigns</span>
+              <span class="summary-value">{{wooSummary.unique_campaigns.length}}</span>
+            </div>
+          </div>
+
+          <div *ngIf="wooSummary.unique_campaigns.length > 0" class="campaigns-list">
+            <h4>Campaign IDs Found:</h4>
+            <div class="campaign-chips">
+              <p-tag *ngFor="let campaign of wooSummary.unique_campaigns" [value]="campaign" severity="info"></p-tag>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="wooOrders.length > 0">
+          <p-divider></p-divider>
+
+          <div class="section-header">
+            <h3>Orders ({{wooOrders.length}})</h3>
+            <p-button
+              [label]="showWooRawJson ? 'Hide JSON' : 'View Raw JSON'"
+              icon="pi pi-code"
+              [outlined]="true"
+              size="small"
+              (onClick)="toggleWooRawJson()"
+            ></p-button>
+          </div>
+
+          <div *ngIf="showWooRawJson" class="json-viewer">
+            <pre>{{ wooOrders | json }}</pre>
+          </div>
+
+          <p-table
+            *ngIf="!showWooRawJson"
+            [value]="wooOrders"
+            [paginator]="true"
+            [rows]="10"
+            [tableStyle]="{'min-width': '50rem'}"
+            styleClass="p-datatable-sm"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>UTM Campaign</th>
+                <th>Traffic Source</th>
+                <th>Bump?</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-order>
+              <tr>
+                <td>#{{order.id}}</td>
+                <td>{{formatWooDate(order.date_created)}}</td>
+                <td>{{order.billing.email}}</td>
+                <td>${{order.total}}</td>
+                <td>
+                  <p-tag [value]="order.status" [severity]="getWooStatusSeverity(order.status)"></p-tag>
+                </td>
+                <td>
+                  <span *ngIf="order.utm_campaign" class="utm-badge">{{order.utm_campaign}}</span>
+                  <span *ngIf="!order.utm_campaign" class="text-muted">No UTM</span>
+                </td>
+                <td>
+                  <span *ngIf="order.utm_source">{{order.utm_source}}/{{order.utm_medium}}</span>
+                  <span *ngIf="!order.utm_source && order.traffic_source_type">{{order.traffic_source_type}}</span>
+                  <span *ngIf="!order.utm_source && !order.traffic_source_type">-</span>
+                </td>
+                <td>
+                  <i *ngIf="order.has_bump_purchase" class="pi pi-check-circle" style="color: green"></i>
+                  <i *ngIf="!order.has_bump_purchase" class="pi pi-times-circle" style="color: gray"></i>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="8">No orders found</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
+      </p-card>
+    </div>
+  </div>
+</div>
