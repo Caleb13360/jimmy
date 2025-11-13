@@ -340,7 +340,7 @@ export class SyncService {
       const { error } = await this.supabase
         .from('campaigns')
         .upsert(campaignRecords, {
-          onConflict: 'id'
+          onConflict: 'user_id,id'
         });
 
       if (error) {
@@ -648,7 +648,7 @@ export class SyncService {
       const { error } = await this.supabase
         .from('products')
         .upsert(productRecords, {
-          onConflict: 'id'
+          onConflict: 'user_id,id'
         });
 
       if (error) {
@@ -722,7 +722,7 @@ export class SyncService {
       const { error: salesError } = await this.supabase
         .from('sales')
         .upsert(salesRecords, {
-          onConflict: 'id'
+          onConflict: 'user_id,id'
         });
 
       if (salesError) {
