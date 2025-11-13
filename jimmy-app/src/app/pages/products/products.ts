@@ -1,42 +1,51 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
-import { DialogModule } from 'primeng/dialog';
-import { DataService } from '../../services/data.service';
-import { Product } from '../../types/database.types';
+import { TagModule } from 'primeng/tag';
+import { ButtonModule } from 'primeng/button';
+import { ImageModule } from 'primeng/image';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { environment } from '../../../environments/environment';
+
+interface ProductData {
+  id: number;
+  name: string;
+  status: string | null;
+  price: number | null;
+  sale_price: number | null;
+  image_url: string | null;
+  updated_at: string;
+}
 
 @Component({
   selector: 'app-products',
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
-    FormsModule,
     TableModule,
-    ButtonModule,
-    InputTextModule,
     CardModule,
     MessageModule,
-    DialogModule
+    TagModule,
+    ButtonModule,
+    ImageModule
   ],
   templateUrl: './products.html',
   styleUrl: './products.css',
 })
 export class Products implements OnInit {
-  products: any[] = [];
-  newProductName = '';
+  products: ProductData[] = [];
   isLoading = false;
   errorMessage = '';
-  successMessage = '';
-  showDialog = false;
+  private supabase: SupabaseClient;
 
-  constructor(private dataService: DataService) {}
+  constructor() {
+    this.supabase = createClient(
+      environment.supabase.url,
+      environment.supabase.anonKey
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadProducts();
@@ -46,71 +55,54 @@ export class Products implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
 
-    const { data, error } = await this.dataService.getProducts();
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        this.errorMessage = 'User not authenticated';
+        this.isLoading = false;
+        return;
+      }
 
-    if (error) {
+      const { data, error } = await this.supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        this.errorMessage = error.message || 'Failed to load products';
+      } else {
+        this.products = data || [];
+      }
+    } catch (error: any) {
       this.errorMessage = error.message || 'Failed to load products';
-    } else {
-      this.products = data || [];
     }
 
     this.isLoading = false;
   }
 
-  openAddDialog(): void {
-    this.newProductName = '';
-    this.errorMessage = '';
-    this.showDialog = true;
+  formatCurrency(value: number | null): string {
+    if (value === null || value === undefined) return '-';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
   }
 
-  closeDialog(): void {
-    this.showDialog = false;
+  getStatusSeverity(status: string | null): 'success' | 'danger' | 'warn' | 'secondary' {
+    if (!status) return 'secondary';
+    switch (status.toLowerCase()) {
+      case 'publish':
+        return 'success';
+      case 'draft':
+        return 'warn';
+      case 'pending':
+        return 'warn';
+      case 'private':
+        return 'secondary';
+      default:
+        return 'secondary';
+    }
   }
 
-  async addProduct(): Promise<void> {
-    if (!this.newProductName.trim()) {
-      this.errorMessage = 'Product name is required';
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    const { data, error } = await this.dataService.createProduct(this.newProductName.trim());
-
-    if (error) {
-      this.errorMessage = error.message || 'Failed to create product';
-    } else if (data) {
-      // Reload products to get the updated count
-      await this.loadProducts();
-      this.successMessage = 'Product added successfully';
-      setTimeout(() => this.successMessage = '', 3000);
-      this.closeDialog();
-    }
-
-    this.isLoading = false;
-  }
-
-  async deleteProduct(id: string): Promise<void> {
-    if (!confirm('Are you sure you want to delete this product?')) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    const { error } = await this.dataService.deleteProduct(id);
-
-    if (error) {
-      this.errorMessage = error.message || 'Failed to delete product';
-    } else {
-      this.products = this.products.filter(p => p.id !== id);
-      this.successMessage = 'Product deleted successfully';
-      setTimeout(() => this.successMessage = '', 3000);
-    }
-
-    this.isLoading = false;
-  }
 }

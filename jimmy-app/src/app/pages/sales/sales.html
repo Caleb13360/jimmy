@@ -1,14 +1,9 @@
 <div class="p-4 md:p-8">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-full mx-auto">
     <p-card>
       <ng-template #header>
-        <div class="p-4 flex justify-between items-center">
+        <div class="p-4">
           <h2 class="text-2xl font-bold m-0">Sales</h2>
-          <p-button
-            label="Add Sale"
-            icon="pi pi-plus"
-            (onClick)="openAddDialog()">
-          </p-button>
         </div>
       </ng-template>
 
@@ -19,51 +14,71 @@
         styleClass="w-full mb-4">
       </p-message>
 
-      <p-message
-        *ngIf="successMessage"
-        severity="success"
-        [text]="successMessage"
-        styleClass="w-full mb-4">
-      </p-message>
-
       <p-table
         [value]="sales"
         [loading]="isLoading"
+        [scrollable]="true"
+        scrollHeight="600px"
         styleClass="p-datatable-sm">
         <ng-template #header>
           <tr>
-            <th>Product</th>
-            <th>Price</th>
+            <th>Order ID</th>
+            <th>Date</th>
             <th>Campaign</th>
-            <th>Quantity</th>
-            <th>Total Revenue</th>
-            <th>Sale Date</th>
-            <th style="width: 100px">Actions</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>Items</th>
+            <th>Products</th>
+            <th>Source</th>
+            <th>Medium</th>
+            <th>Device</th>
+            <th>Sessions</th>
+            <th>Page Views</th>
+            <th>Has Bump</th>
           </tr>
         </ng-template>
         <ng-template #body let-sale>
           <tr>
-            <td>{{ sale.products?.name || 'N/A' }}</td>
-            <td>{{ sale.product_prices?.price || 0 | currency }}</td>
-            <td>{{ sale.campaigns?.name || 'N/A' }}</td>
-            <td>{{ sale.quantity }}</td>
-            <td>{{ getTotalRevenue(sale) | currency }}</td>
-            <td>{{ sale.sale_date | date:'dd/MM/yyyy' }}</td>
+            <td>{{ sale.id }}</td>
+            <td>{{ formatDate(sale.date_created) }}</td>
+            <td>{{ sale.campaign_name || sale.utm_campaign || '-' }}</td>
             <td>
-              <p-button
-                icon="pi pi-trash"
-                severity="danger"
-                [outlined]="true"
-                size="small"
-                (onClick)="deleteSale(sale.id)">
-              </p-button>
+              <p-tag
+                [value]="sale.order_status"
+                [severity]="getStatusSeverity(sale.order_status)">
+              </p-tag>
+            </td>
+            <td>{{ formatCurrency(sale.order_total) }}</td>
+            <td>{{ sale.item_count || 0 }}</td>
+            <td class="max-w-xs truncate" [title]="sale.product_names">{{ sale.product_names }}</td>
+            <td>{{ sale.utm_source || '-' }}</td>
+            <td>{{ sale.utm_medium || '-' }}</td>
+            <td>
+              <i [class]="'pi ' + getDeviceIcon(sale.device_type)" [title]="sale.device_type || 'Unknown'"></i>
+              {{ sale.device_type || '-' }}
+            </td>
+            <td>{{ formatNumber(sale.session_count) }}</td>
+            <td>{{ formatNumber(sale.session_page_views) }}</td>
+            <td>
+              <p-tag
+                *ngIf="sale.has_bump"
+                value="Yes"
+                severity="success">
+              </p-tag>
+              <span *ngIf="!sale.has_bump">No</span>
             </td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="7" class="text-center">
-              No sales found. Add your first sale above.
+            <td colspan="13" class="text-center py-8">
+              <div class="flex flex-col items-center gap-4">
+                <i class="pi pi-inbox text-4xl text-gray-400"></i>
+                <div>
+                  <p class="text-lg font-semibold mb-2">No sales found</p>
+                  <p class="text-gray-600">Sync your sales from the Sync page to see them here.</p>
+                </div>
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -71,110 +86,3 @@
     </p-card>
   </div>
 </div>
-
-<!-- Add Sale Dialog -->
-<p-dialog
-  [(visible)]="showDialog"
-  [modal]="true"
-  [closable]="true"
-  [draggable]="false"
-  [resizable]="false"
-  styleClass="w-full max-w-md"
-  [appendTo]="'body'">
-  <ng-template #header>
-    <h3 class="text-xl font-bold m-0">Add Sale</h3>
-  </ng-template>
-
-  <div class="flex flex-col gap-4">
-    <p-message
-      *ngIf="errorMessage"
-      severity="error"
-      [text]="errorMessage"
-      styleClass="w-full">
-    </p-message>
-
-    <div class="flex flex-col gap-2">
-      <label for="product">Product</label>
-      <p-select
-        id="product"
-        [(ngModel)]="selectedProduct"
-        [options]="products"
-        optionLabel="name"
-        placeholder="Select a product"
-        [disabled]="isLoading"
-        (onChange)="onProductChange()"
-        styleClass="w-full">
-      </p-select>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="price">Price</label>
-      <p-select
-        id="price"
-        [(ngModel)]="selectedPrice"
-        [options]="availablePrices"
-        optionLabel="price"
-        placeholder="Select a price"
-        [disabled]="isLoading || !selectedProduct"
-        styleClass="w-full">
-        <ng-template let-price pTemplate="item">
-          {{ price.price | currency }}
-        </ng-template>
-        <ng-template let-price pTemplate="selectedItem">
-          {{ price.price | currency }}
-        </ng-template>
-      </p-select>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="campaign">Campaign</label>
-      <p-select
-        id="campaign"
-        [(ngModel)]="selectedCampaign"
-        [options]="campaigns"
-        optionLabel="name"
-        placeholder="Select a campaign"
-        [disabled]="isLoading"
-        styleClass="w-full">
-      </p-select>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="quantity">Quantity</label>
-      <p-inputNumber
-        id="quantity"
-        [(ngModel)]="selectedQuantity"
-        placeholder="Enter quantity"
-        [disabled]="isLoading"
-        [min]="1">
-      </p-inputNumber>
-    </div>
-
-    <div class="flex flex-col gap-2">
-      <label for="date">Sale Date</label>
-      <p-datepicker
-        id="date"
-        [(ngModel)]="selectedDate"
-        [disabled]="isLoading"
-        dateFormat="dd/mm/yy"
-        [showIcon]="true"
-        styleClass="w-full">
-      </p-datepicker>
-    </div>
-  </div>
-
-  <ng-template #footer>
-    <p-button
-      label="Cancel"
-      severity="secondary"
-      [outlined]="true"
-      (onClick)="closeDialog()"
-      [disabled]="isLoading">
-    </p-button>
-    <p-button
-      label="Add Sale"
-      (onClick)="addSale()"
-      [loading]="isLoading">
-    </p-button>
-  </ng-template>
-</p-dialog>

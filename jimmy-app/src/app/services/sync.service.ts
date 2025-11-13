@@ -44,6 +44,17 @@ export interface MetaCampaignInsight {
 }
 
 // WooCommerce API Types
+export interface WooCommerceProduct {
+  id: number;
+  name: string;
+  status: string;
+  price: string;
+  sale_price: string;
+  images: Array<{
+    src: string;
+  }>;
+}
+
 export interface WooCommerceOrder {
   id: number;
   date_created: string;
@@ -85,6 +96,11 @@ export interface WooCommerceOrder {
   device_type?: string;
   referrer?: string;
   has_bump_purchase?: boolean;
+  // Session data
+  session_count?: number | null;
+  session_page_views?: number | null;
+  time_to_conversion_hours?: number | null;
+  first_visit_date?: string | null;
 }
 
 export interface WooCommerceSummary {
@@ -471,7 +487,7 @@ export class SyncService {
   private enrichOrder(order: any): WooCommerceOrder {
     const enriched: WooCommerceOrder = { ...order };
 
-    // Extract UTM parameters from meta_data
+    // Extract UTM parameters and session data from meta_data
     if (order.meta_data && Array.isArray(order.meta_data)) {
       order.meta_data.forEach((meta: any) => {
         if (meta.key === '_wc_order_attribution_utm_campaign') {
@@ -490,6 +506,15 @@ export class SyncService {
           enriched.device_type = meta.value;
         } else if (meta.key === '_wc_order_attribution_referrer') {
           enriched.referrer = meta.value;
+        } else if (meta.key === '_wc_order_attribution_session_count') {
+          enriched.session_count = parseInt(meta.value) || null;
+        } else if (meta.key === '_wc_order_attribution_session_pages') {
+          enriched.session_page_views = parseInt(meta.value) || null;
+        } else if (meta.key === '_wc_order_attribution_time_to_conversion') {
+          // Convert seconds to hours
+          enriched.time_to_conversion_hours = meta.value ? parseFloat((meta.value / 3600).toFixed(2)) : null;
+        } else if (meta.key === '_wc_order_attribution_first_visit_time') {
+          enriched.first_visit_date = meta.value;
         }
       });
     }
@@ -539,5 +564,240 @@ export class SyncService {
       unique_campaigns: [],
       date_range: { start: '', end: '' }
     };
+  }
+
+  /**
+   * Fetch products from WooCommerce
+   */
+  async fetchWooProducts(
+    url: string,
+    consumerKey: string,
+    consumerSecret: string
+  ): Promise<{
+    products: WooCommerceProduct[];
+    error?: string;
+  }> {
+    try {
+      const cleanUrl = url.replace(/\/+$/, '');
+      const apiUrl = `${cleanUrl}/wp-json/wc/v3/products`;
+
+      const params = new URLSearchParams({
+        per_page: '100',
+        order: 'desc'
+      });
+
+      const response = await fetch(`${apiUrl}?${params}`, {
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${consumerKey}:${consumerSecret}`)
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          products: [],
+          error: errorData.message || 'Failed to fetch products'
+        };
+      }
+
+      const productsData: WooCommerceProduct[] = await response.json();
+
+      return {
+        products: productsData,
+        error: undefined
+      };
+    } catch (error: any) {
+      return {
+        products: [],
+        error: error.message || 'Network error fetching products'
+      };
+    }
+  }
+
+  /**
+   * Sync products to database (upsert)
+   */
+  async syncProductsToDatabase(
+    products: WooCommerceProduct[]
+  ): Promise<{
+    success: boolean;
+    synced: number;
+    error?: string;
+  }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        return {
+          success: false,
+          synced: 0,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Prepare product records for upsert
+      const productRecords = products.map(product => ({
+        id: product.id,
+        user_id: user.id,
+        name: product.name,
+        status: product.status,
+        price: product.price ? parseFloat(product.price) : null,
+        sale_price: product.sale_price ? parseFloat(product.sale_price) : null,
+        image_url: product.images && product.images.length > 0 ? product.images[0].src : null,
+        updated_at: new Date().toISOString()
+      }));
+
+      // Upsert products
+      const { error } = await this.supabase
+        .from('products')
+        .upsert(productRecords, {
+          onConflict: 'id'
+        });
+
+      if (error) {
+        return {
+          success: false,
+          synced: 0,
+          error: error.message
+        };
+      }
+
+      return {
+        success: true,
+        synced: productRecords.length
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        synced: 0,
+        error: error.message || 'Failed to sync products to database'
+      };
+    }
+  }
+
+  /**
+   * Sync sales and sale items to database (upsert)
+   */
+  async syncSalesToDatabase(
+    orders: WooCommerceOrder[]
+  ): Promise<{
+    success: boolean;
+    syncedSales: number;
+    syncedItems: number;
+    error?: string;
+  }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        return {
+          success: false,
+          syncedSales: 0,
+          syncedItems: 0,
+          error: 'User not authenticated'
+        };
+      }
+
+      // Prepare sales records for upsert
+      const salesRecords = orders.map(order => ({
+        id: order.id,
+        user_id: user.id,
+        campaign_id: order.utm_campaign || null,
+        date_created: order.date_created,
+        order_total: parseFloat(order.total),
+        order_status: order.status,
+        utm_campaign: order.utm_campaign || null,
+        utm_source: order.utm_source || null,
+        utm_medium: order.utm_medium || null,
+        utm_content: order.utm_content || null,
+        utm_term: order.utm_term || null,
+        traffic_source_type: order.traffic_source_type || null,
+        device_type: order.device_type || null,
+        referrer: order.referrer || null,
+        session_count: order.session_count || null,
+        session_page_views: order.session_page_views || null,
+        time_to_conversion_hours: order.time_to_conversion_hours || null,
+        first_visit_date: order.first_visit_date || null,
+        has_bump: order.has_bump_purchase || false,
+        updated_at: new Date().toISOString()
+      }));
+
+      // Upsert sales
+      const { error: salesError } = await this.supabase
+        .from('sales')
+        .upsert(salesRecords, {
+          onConflict: 'id'
+        });
+
+      if (salesError) {
+        return {
+          success: false,
+          syncedSales: 0,
+          syncedItems: 0,
+          error: salesError.message
+        };
+      }
+
+      // Get list of existing product IDs to validate foreign key constraint
+      const { data: existingProducts } = await this.supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', user.id);
+
+      const existingProductIds = new Set(existingProducts?.map(p => p.id) || []);
+
+      // Prepare sale items records
+      const saleItemsRecords: any[] = [];
+      orders.forEach(order => {
+        order.line_items.forEach(item => {
+          const isBump = item.meta_data?.some((meta: any) => meta.key === '_bump_purchase') || false;
+
+          saleItemsRecords.push({
+            sale_id: order.id,
+            user_id: user.id,
+            // Only set product_id if the product exists in our database
+            product_id: existingProductIds.has(item.product_id) ? item.product_id : null,
+            product_name: item.name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            line_total: parseFloat(item.total),
+            is_bump: isBump
+          });
+        });
+      });
+
+      // Delete existing sale items for these orders, then insert new ones
+      const orderIds = orders.map(o => o.id);
+      await this.supabase
+        .from('sale_items')
+        .delete()
+        .in('sale_id', orderIds)
+        .eq('user_id', user.id);
+
+      // Insert sale items
+      const { error: itemsError } = await this.supabase
+        .from('sale_items')
+        .insert(saleItemsRecords);
+
+      if (itemsError) {
+        return {
+          success: false,
+          syncedSales: salesRecords.length,
+          syncedItems: 0,
+          error: itemsError.message
+        };
+      }
+
+      return {
+        success: true,
+        syncedSales: salesRecords.length,
+        syncedItems: saleItemsRecords.length
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        syncedSales: 0,
+        syncedItems: 0,
+        error: error.message || 'Failed to sync sales to database'
+      };
+    }
   }
 }

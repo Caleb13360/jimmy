@@ -22,7 +22,8 @@ import {
   MetaCampaign,
   MetaCampaignInsight,
   WooCommerceOrder,
-  WooCommerceSummary
+  WooCommerceSummary,
+  WooCommerceProduct
 } from '../../services/sync.service';
 
 @Component({
@@ -65,6 +66,7 @@ export class SyncComponent implements OnInit {
   wooKey: string = '';
   wooSecret: string = '';
   wooOrders: WooCommerceOrder[] = [];
+  wooProducts: WooCommerceProduct[] = [];
   wooSummary: WooCommerceSummary | null = null;
   wooLoading: boolean = false;
   wooError: string = '';
@@ -274,8 +276,25 @@ export class SyncComponent implements OnInit {
     this.wooError = '';
     this.wooSuccess = '';
     this.wooOrders = [];
+    this.wooProducts = [];
     this.wooSummary = null;
 
+    // Fetch products first
+    const productsResult = await this.syncService.fetchWooProducts(
+      this.wooUrl,
+      this.wooKey,
+      this.wooSecret
+    );
+
+    if (productsResult.error) {
+      this.wooError = `Products: ${productsResult.error}`;
+      this.wooLoading = false;
+      return;
+    }
+
+    this.wooProducts = productsResult.products;
+
+    // Fetch orders
     let dateRange: { start: string; end: string } | undefined;
     if (this.wooDateRange && this.wooDateRange.length === 2) {
       dateRange = {
@@ -284,7 +303,7 @@ export class SyncComponent implements OnInit {
       };
     }
 
-    const result = await this.syncService.fetchWooOrders(
+    const ordersResult = await this.syncService.fetchWooOrders(
       this.wooUrl,
       this.wooKey,
       this.wooSecret,
@@ -293,13 +312,52 @@ export class SyncComponent implements OnInit {
 
     this.wooLoading = false;
 
-    if (result.error) {
-      this.wooError = result.error;
+    if (ordersResult.error) {
+      this.wooError = `Orders: ${ordersResult.error}`;
     } else {
-      this.wooOrders = result.orders;
-      this.wooSummary = result.summary;
-      this.wooSuccess = `Fetched ${result.orders.length} orders`;
+      this.wooOrders = ordersResult.orders;
+      this.wooSummary = ordersResult.summary;
+      this.wooSuccess = `Fetched ${productsResult.products.length} products and ${ordersResult.orders.length} orders`;
+
+      // Auto-sync to database
+      await this.syncWooCommerceToDatabase();
     }
+  }
+
+  async syncWooCommerceToDatabase() {
+    if (this.wooProducts.length === 0 && this.wooOrders.length === 0) {
+      this.wooError = 'No products or orders to sync. Fetch data first.';
+      return;
+    }
+
+    this.wooLoading = true;
+    this.wooError = '';
+
+    // Sync products first
+    if (this.wooProducts.length > 0) {
+      const productsSync = await this.syncService.syncProductsToDatabase(this.wooProducts);
+      if (!productsSync.success) {
+        this.wooError = `Products sync failed: ${productsSync.error}`;
+        this.wooLoading = false;
+        return;
+      }
+    }
+
+    // Sync sales and sale items
+    if (this.wooOrders.length > 0) {
+      const salesSync = await this.syncService.syncSalesToDatabase(this.wooOrders);
+      if (!salesSync.success) {
+        this.wooError = `Sales sync failed: ${salesSync.error}`;
+        this.wooLoading = false;
+        return;
+      }
+
+      this.wooSuccess = `Synced ${this.wooProducts.length} products, ${salesSync.syncedSales} sales, and ${salesSync.syncedItems} sale items to database`;
+    } else {
+      this.wooSuccess = `Synced ${this.wooProducts.length} products to database`;
+    }
+
+    this.wooLoading = false;
   }
 
   toggleWooRawJson() {

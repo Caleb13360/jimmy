@@ -1,53 +1,59 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
-import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
-import { DialogModule } from 'primeng/dialog';
-import { SelectModule } from 'primeng/select';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { DatePickerModule } from 'primeng/datepicker';
-import { DataService } from '../../services/data.service';
-import { Product, ProductPrice, Campaign, Sale } from '../../types/database.types';
+import { TagModule } from 'primeng/tag';
+import { ButtonModule } from 'primeng/button';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { environment } from '../../../environments/environment';
+
+interface SaleData {
+  id: number;
+  campaign_id: string | null;
+  campaign_name?: string;
+  date_created: string;
+  order_total: number;
+  order_status: string;
+  utm_campaign: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  device_type: string | null;
+  traffic_source_type: string | null;
+  session_count: number | null;
+  session_page_views: number | null;
+  time_to_conversion_hours: number | null;
+  has_bump: boolean;
+  item_count?: number;
+  product_names?: string;
+}
 
 @Component({
   selector: 'app-sales',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     TableModule,
-    ButtonModule,
     CardModule,
     MessageModule,
-    DialogModule,
-    SelectModule,
-    InputNumberModule,
-    DatePickerModule
+    TagModule,
+    ButtonModule
   ],
   templateUrl: './sales.html',
   styleUrl: './sales.css',
 })
 export class Sales implements OnInit {
-  sales: any[] = [];
-  products: Product[] = [];
-  availablePrices: ProductPrice[] = [];
-  campaigns: Campaign[] = [];
-
-  selectedProduct: Product | null = null;
-  selectedPrice: ProductPrice | null = null;
-  selectedCampaign: Campaign | null = null;
-  selectedQuantity: number | null = null;
-  selectedDate: Date = new Date();
-
+  sales: SaleData[] = [];
   isLoading = false;
   errorMessage = '';
-  successMessage = '';
-  showDialog = false;
+  private supabase: SupabaseClient;
 
-  constructor(private dataService: DataService) {}
+  constructor() {
+    this.supabase = createClient(
+      environment.supabase.url,
+      environment.supabase.anonKey
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadSales();
@@ -57,131 +63,103 @@ export class Sales implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
 
-    const { data, error } = await this.dataService.getSales();
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        this.errorMessage = 'User not authenticated';
+        this.isLoading = false;
+        return;
+      }
 
-    if (error) {
+      // Get sales with campaign name
+      const { data: salesData, error: salesError } = await this.supabase
+        .from('sales')
+        .select('*, campaigns(name)')
+        .eq('user_id', user.id)
+        .order('date_created', { ascending: false });
+
+      if (salesError) {
+        this.errorMessage = salesError.message || 'Failed to load sales';
+      } else {
+        // Get sale items count and product names for each sale
+        const salesWithItems = await Promise.all((salesData || []).map(async (sale: any) => {
+          const { data: items } = await this.supabase
+            .from('sale_items')
+            .select('product_name, quantity')
+            .eq('sale_id', sale.id);
+
+          const itemCount = items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+          const productNames = items?.map(item => item.product_name).join(', ') || '-';
+
+          return {
+            ...sale,
+            campaign_name: sale.campaigns?.name || null,
+            item_count: itemCount,
+            product_names: productNames
+          };
+        }));
+
+        this.sales = salesWithItems;
+      }
+    } catch (error: any) {
       this.errorMessage = error.message || 'Failed to load sales';
-    } else {
-      this.sales = data || [];
     }
 
     this.isLoading = false;
   }
 
-  async openAddDialog(): Promise<void> {
-    this.selectedProduct = null;
-    this.selectedPrice = null;
-    this.selectedCampaign = null;
-    this.selectedQuantity = null;
-    this.selectedDate = new Date();
-    this.availablePrices = [];
-    this.errorMessage = '';
-    this.showDialog = true;
-
-    // Load dropdown data
-    await this.loadDropdownData();
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
   }
 
-  async loadDropdownData(): Promise<void> {
-    const [productsResult, campaignsResult] = await Promise.all([
-      this.dataService.getProductsForSales(),
-      this.dataService.getCampaignsForSales()
-    ]);
-
-    if (productsResult.error) {
-      this.errorMessage = 'Failed to load products';
-    } else {
-      this.products = productsResult.data || [];
-    }
-
-    if (campaignsResult.error) {
-      this.errorMessage = 'Failed to load campaigns';
-    } else {
-      this.campaigns = campaignsResult.data || [];
-    }
+  formatDate(dateString: string): string {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
-  async onProductChange(): Promise<void> {
-    this.selectedPrice = null;
-    this.availablePrices = [];
+  formatNumber(value: number | null): string {
+    if (value === null || value === undefined) return '-';
+    return value.toString();
+  }
 
-    if (!this.selectedProduct) {
-      return;
-    }
-
-    const { data, error } = await this.dataService.getProductPricesForSales(this.selectedProduct.id);
-
-    if (error) {
-      this.errorMessage = 'Failed to load prices for this product';
-    } else {
-      this.availablePrices = data || [];
+  getStatusSeverity(status: string): 'success' | 'danger' | 'warn' | 'secondary' | 'info' {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+        return 'success';
+      case 'processing':
+        return 'info';
+      case 'on-hold':
+      case 'pending':
+        return 'warn';
+      case 'cancelled':
+      case 'refunded':
+      case 'failed':
+        return 'danger';
+      default:
+        return 'secondary';
     }
   }
 
-  closeDialog(): void {
-    this.showDialog = false;
-  }
-
-  async addSale(): Promise<void> {
-    if (!this.selectedProduct || !this.selectedPrice || !this.selectedCampaign || !this.selectedQuantity || this.selectedQuantity <= 0) {
-      this.errorMessage = 'Please fill in all fields with valid values';
-      return;
+  getDeviceIcon(deviceType: string | null): string {
+    if (!deviceType) return 'pi-question';
+    switch (deviceType.toLowerCase()) {
+      case 'mobile':
+        return 'pi-mobile';
+      case 'desktop':
+        return 'pi-desktop';
+      case 'tablet':
+        return 'pi-tablet';
+      default:
+        return 'pi-question';
     }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    // Format date to YYYY-MM-DD in local timezone
-    const year = this.selectedDate.getFullYear();
-    const month = String(this.selectedDate.getMonth() + 1).padStart(2, '0');
-    const day = String(this.selectedDate.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    const { data, error } = await this.dataService.createSale(
-      this.selectedProduct.id,
-      this.selectedPrice.id,
-      this.selectedCampaign.id,
-      this.selectedQuantity,
-      dateStr
-    );
-
-    if (error) {
-      this.errorMessage = error.message || 'Failed to create sale';
-    } else if (data) {
-      await this.loadSales();
-      this.successMessage = 'Sale added successfully';
-      setTimeout(() => this.successMessage = '', 3000);
-      this.closeDialog();
-    }
-
-    this.isLoading = false;
-  }
-
-  async deleteSale(id: string): Promise<void> {
-    if (!confirm('Are you sure you want to delete this sale?')) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    const { error } = await this.dataService.deleteSale(id);
-
-    if (error) {
-      this.errorMessage = error.message || 'Failed to delete sale';
-    } else {
-      this.sales = this.sales.filter(s => s.id !== id);
-      this.successMessage = 'Sale deleted successfully';
-      setTimeout(() => this.successMessage = '', 3000);
-    }
-
-    this.isLoading = false;
-  }
-
-  getTotalRevenue(sale: any): number {
-    const price = sale.product_prices?.price || 0;
-    return price * sale.quantity;
   }
 }

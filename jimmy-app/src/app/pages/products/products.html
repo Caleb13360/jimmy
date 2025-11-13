@@ -1,14 +1,9 @@
 <div class="p-4 md:p-8">
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-full mx-auto">
     <p-card>
       <ng-template #header>
-        <div class="p-4 flex justify-between items-center">
+        <div class="p-4">
           <h2 class="text-2xl font-bold m-0">Products</h2>
-          <p-button
-            label="Add Product"
-            icon="pi pi-plus"
-            (onClick)="openAddDialog()">
-          </p-button>
         </div>
       </ng-template>
 
@@ -19,45 +14,62 @@
         styleClass="w-full mb-4">
       </p-message>
 
-      <p-message
-        *ngIf="successMessage"
-        severity="success"
-        [text]="successMessage"
-        styleClass="w-full mb-4">
-      </p-message>
-
       <p-table
         [value]="products"
         [loading]="isLoading"
+        [scrollable]="true"
+        scrollHeight="600px"
         styleClass="p-datatable-sm">
         <ng-template #header>
           <tr>
-            <th>Product Name</th>
-            <th>Prices</th>
-            <th>Created At</th>
-            <th style="width: 100px">Actions</th>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Price</th>
+            <th>Sale Price</th>
           </tr>
         </ng-template>
         <ng-template #body let-product>
-          <tr [routerLink]="['/products', product.id, 'prices']" style="cursor: pointer">
-            <td>{{ product.name }}</td>
-            <td>{{ product.product_prices?.[0]?.count || 0 }}</td>
-            <td>{{ product.created_at | date:'short' }}</td>
+          <tr>
             <td>
-              <p-button
-                icon="pi pi-trash"
-                severity="danger"
-                [outlined]="true"
-                size="small"
-                (onClick)="deleteProduct(product.id); $event.stopPropagation()">
-              </p-button>
+              <img
+                *ngIf="product.image_url"
+                [src]="product.image_url"
+                [alt]="product.name"
+                class="w-12 h-12 object-cover rounded"
+                [title]="product.name">
+              <div
+                *ngIf="!product.image_url"
+                class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                <i class="pi pi-image text-gray-400"></i>
+              </div>
+            </td>
+            <td>{{ product.name }}</td>
+            <td>
+              <p-tag
+                [value]="product.status || 'unknown'"
+                [severity]="getStatusSeverity(product.status)">
+              </p-tag>
+            </td>
+            <td>{{ formatCurrency(product.price) }}</td>
+            <td>
+              <span *ngIf="product.sale_price" class="text-red-600 font-semibold">
+                {{ formatCurrency(product.sale_price) }}
+              </span>
+              <span *ngIf="!product.sale_price">-</span>
             </td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="4" class="text-center">
-              No products found. Add your first product above.
+            <td colspan="5" class="text-center py-8">
+              <div class="flex flex-col items-center gap-4">
+                <i class="pi pi-inbox text-4xl text-gray-400"></i>
+                <div>
+                  <p class="text-lg font-semibold mb-2">No products found</p>
+                  <p class="text-gray-600">Sync your products from the Sync page to see them here.</p>
+                </div>
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -65,51 +77,3 @@
     </p-card>
   </div>
 </div>
-
-<!-- Add Product Dialog -->
-<p-dialog
-  [(visible)]="showDialog"
-  [modal]="true"
-  [closable]="true"
-  [draggable]="false"
-  [resizable]="false"
-  styleClass="w-full max-w-md">
-  <ng-template #header>
-    <h3 class="text-xl font-bold m-0">Add Product</h3>
-  </ng-template>
-
-  <div class="flex flex-col gap-4">
-    <p-message
-      *ngIf="errorMessage"
-      severity="error"
-      [text]="errorMessage"
-      styleClass="w-full">
-    </p-message>
-
-    <div class="flex flex-col gap-2">
-      <label for="productName">Product Name</label>
-      <input
-        id="productName"
-        pInputText
-        type="text"
-        [(ngModel)]="newProductName"
-        placeholder="Enter product name"
-        [disabled]="isLoading" />
-    </div>
-  </div>
-
-  <ng-template #footer>
-    <p-button
-      label="Cancel"
-      severity="secondary"
-      [outlined]="true"
-      (onClick)="closeDialog()"
-      [disabled]="isLoading">
-    </p-button>
-    <p-button
-      label="Add Product"
-      (onClick)="addProduct()"
-      [loading]="isLoading">
-    </p-button>
-  </ng-template>
-</p-dialog>
