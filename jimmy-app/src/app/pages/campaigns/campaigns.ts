@@ -17,6 +17,8 @@ interface CampaignData {
   clicks: number;
   purchases: number;
   purchase_value: number;
+  start_date: string;
+  end_date: string | null;
   // Calculated columns
   cpm: number;
   roas: number;
@@ -141,5 +143,14 @@ export class Campaigns implements OnInit {
     if (roas >= 3) return 'success';
     if (roas >= 2) return 'warn';
     return 'danger';
+  }
+
+  formatDate(dateString: string | null): string {
+    if (!dateString) return 'Ongoing';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   }
 }

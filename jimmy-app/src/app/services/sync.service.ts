@@ -315,6 +315,8 @@ export class SyncService {
           clicks: insight ? parseInt(insight.clicks) : 0,
           purchases: purchases,
           purchase_value: purchaseValue,
+          start_date: campaign.start_time,
+          end_date: campaign.stop_time || null,
           updated_at: new Date().toISOString()
         };
       });

@@ -28,6 +28,8 @@
         <ng-template #header>
           <tr>
             <th>Campaign Name</th>
+            <th>Start Date</th>
+            <th>End Date</th>
             <th>Budget</th>
             <th>Spend</th>
             <th>Impressions</th>
@@ -46,6 +48,8 @@
         <ng-template #body let-campaign>
           <tr>
             <td>{{ campaign.name }}</td>
+            <td>{{ formatDate(campaign.start_date) }}</td>
+            <td>{{ formatDate(campaign.end_date) }}</td>
             <td>{{ campaign.budget ? formatCurrency(campaign.budget) : '-' }}</td>
             <td>{{ formatCurrency(campaign.spend) }}</td>
             <td>{{ formatNumber(campaign.impressions) }}</td>
@@ -70,7 +74,7 @@
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="14" class="text-center py-8">
+            <td colspan="16" class="text-center py-8">
               <div class="flex flex-col items-center gap-4">
                 <i class="pi pi-inbox text-4xl text-gray-400"></i>
                 <div>
