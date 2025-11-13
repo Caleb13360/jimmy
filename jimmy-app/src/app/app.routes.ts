@@ -5,7 +5,7 @@ import { loginGuard } from './guards/login.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/analytics',
+    redirectTo: '/products',
     pathMatch: 'full'
   },
   {
@@ -19,18 +19,8 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'products/:id/prices',
-    loadComponent: () => import('./pages/product-prices/product-prices').then(m => m.ProductPrices),
-    canActivate: [authGuard]
-  },
-  {
     path: 'campaigns',
     loadComponent: () => import('./pages/campaigns/campaigns').then(m => m.Campaigns),
-    canActivate: [authGuard]
-  },
-  {
-    path: 'campaigns/:id/details',
-    loadComponent: () => import('./pages/campaign-details/campaign-details').then(m => m.CampaignDetails),
     canActivate: [authGuard]
   },
   {
@@ -50,6 +40,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/analytics'
+    redirectTo: '/products'
   }
 ];

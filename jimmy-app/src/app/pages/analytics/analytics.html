@@ -1,12 +1,45 @@
 <div class="p-4 md:p-8">
-  <div class="max-w-7xl mx-auto">
-    <h2 class="text-2xl font-bold mb-6">Analytics</h2>
-
-    <!-- Filters -->
-    <p-card styleClass="mb-6">
+  <div class="max-w-full mx-auto">
+    <p-card>
       <ng-template #header>
         <div class="p-4">
-          <h3 class="text-lg font-semibold m-0">Filters</h3>
+          <div class="flex justify-between items-start mb-4">
+            <h2 class="text-2xl font-bold m-0">Analytics</h2>
+            <div>
+              <label class="block text-sm font-medium mb-2">Metric</label>
+              <p-selectbutton
+                [options]="metricOptions"
+                [(ngModel)]="selectedMetric"
+                optionLabel="label"
+                optionValue="value"
+                (onChange)="onMetricChange()">
+              </p-selectbutton>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-4 items-center">
+            <div class="flex-shrink-0">
+              <label class="block text-sm font-medium mb-2">Time Range</label>
+              <p-select
+                [options]="timeRangeOptions"
+                [(ngModel)]="selectedTimeRange"
+                optionLabel="label"
+                optionValue="value"
+                (onChange)="onTimeRangeChange()"
+                [style]="{'min-width': '200px'}">
+              </p-select>
+            </div>
+            <div class="flex-shrink-0" *ngIf="showCustomDatePicker">
+              <label class="block text-sm font-medium mb-2">Custom Date Range</label>
+              <p-datepicker
+                [(ngModel)]="customDateRange"
+                selectionMode="range"
+                [readonlyInput]="true"
+                dateFormat="mm/dd/yy"
+                (onSelect)="onCustomDateRangeChange()"
+                [style]="{'min-width': '250px'}">
+              </p-datepicker>
+            </div>
+          </div>
         </div>
       </ng-template>
 
@@ -17,152 +50,82 @@
         styleClass="w-full mb-4">
       </p-message>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="flex flex-col gap-2">
-          <label for="dateRange">Date Range</label>
-          <p-select
-            id="dateRange"
-            [(ngModel)]="selectedDateRange"
-            [options]="dateRangeOptions"
-            optionLabel="label"
-            placeholder="Select date range"
-            (onChange)="onDateRangeChange()"
-            styleClass="w-full">
-          </p-select>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label for="product">Product</label>
-          <p-select
-            id="product"
-            [(ngModel)]="selectedProduct"
-            [options]="products"
-            optionLabel="name"
-            placeholder="All products"
-            [showClear]="true"
-            (onChange)="onFilterChange()"
-            styleClass="w-full">
-          </p-select>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label for="campaign">Campaign</label>
-          <p-select
-            id="campaign"
-            [(ngModel)]="selectedCampaign"
-            [options]="campaigns"
-            optionLabel="name"
-            placeholder="All campaigns"
-            [showClear]="true"
-            (onChange)="onFilterChange()"
-            styleClass="w-full">
-          </p-select>
-        </div>
-      </div>
-
-      <div *ngIf="showCustomDatePicker" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div class="flex flex-col gap-2">
-          <label for="startDate">Start Date</label>
-          <p-datepicker
-            id="startDate"
-            [(ngModel)]="customStartDate"
-            dateFormat="dd/mm/yy"
-            [showIcon]="true"
-            (onSelect)="onCustomDateChange()"
-            styleClass="w-full">
-          </p-datepicker>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label for="endDate">End Date</label>
-          <p-datepicker
-            id="endDate"
-            [(ngModel)]="customEndDate"
-            dateFormat="dd/mm/yy"
-            [showIcon]="true"
-            (onSelect)="onCustomDateChange()"
-            styleClass="w-full">
-          </p-datepicker>
-        </div>
-      </div>
-    </p-card>
-
-    <!-- Charts -->
-    <p-card>
-      <div class="flex justify-between items-center mb-4">
-        <div></div>
-        <div class="flex gap-2">
-          <p-button
-            [label]="showRevenue ? 'Showing Revenue ($)' : 'Showing Quantity'"
-            [icon]="showRevenue ? 'pi pi-dollar' : 'pi pi-hashtag'"
-            severity="secondary"
-            [outlined]="true"
-            (onClick)="toggleDisplayMode()">
-          </p-button>
-        </div>
-      </div>
-
-      <p-tabs value="0">
+      <p-tabs [(value)]="activeTabValue" (onChange)="onTabChange($event)">
         <p-tablist>
-          <p-tab value="0">
-            <span class="flex items-center gap-2">
-              <i class="pi pi-box"></i>
-              <span class="font-semibold">Products</span>
-            </span>
-          </p-tab>
-          <p-tab value="1">
-            <span class="flex items-center gap-2">
-              <i class="pi pi-megaphone"></i>
-              <span class="font-semibold">Campaigns</span>
-            </span>
-          </p-tab>
+          <p-tab value="0">All</p-tab>
+          <p-tab value="1">Campaign</p-tab>
+          <p-tab value="2">Product</p-tab>
         </p-tablist>
 
         <p-tabpanels>
           <p-tabpanel value="0">
-            <div class="pt-4" style="height: 80vh; display: flex; flex-direction: column;">
-              <div *ngIf="isLoading" class="flex justify-center items-center" style="flex: 1;">
-                <i class="pi pi-spin pi-spinner text-4xl"></i>
+            <div class="chart-container" style="height: 400px;">
+              <p-chart
+                *ngIf="!isLoading && chartData"
+                type="line"
+                [data]="chartData"
+                [options]="chartOptions"
+                [style]="{'height': '100%'}">
+              </p-chart>
+
+              <div *ngIf="isLoading" class="flex justify-center items-center" style="height: 100%;">
+                <i class="pi pi-spin pi-spinner text-4xl text-gray-400"></i>
               </div>
 
-              <div *ngIf="!isLoading && productChartData && productChartData.datasets.length > 0"
-                   style="flex: 1; min-height: 0; position: relative;">
-                <p-chart
-                  type="line"
-                  [data]="productChartData"
-                  [options]="productChartOptions"
-                  style="height: 100%; width: 100%;">
-                </p-chart>
-              </div>
-
-              <div *ngIf="!isLoading && (!productChartData || productChartData.datasets.length === 0)"
-                   style="flex: 1;"
-                   class="flex justify-center items-center text-gray-500">
-                No sales data available for the selected filters
+              <div *ngIf="!isLoading && !chartData" class="flex justify-center items-center" style="height: 100%;">
+                <div class="text-center">
+                  <i class="pi pi-chart-line text-4xl text-gray-400 mb-4"></i>
+                  <p class="text-lg font-semibold mb-2">No sales data found</p>
+                  <p class="text-gray-600">Sync your sales from the Sync page to see analytics.</p>
+                </div>
               </div>
             </div>
           </p-tabpanel>
 
           <p-tabpanel value="1">
-            <div class="pt-4" style="height: 80vh; display: flex; flex-direction: column;">
-              <div *ngIf="isLoading" class="flex justify-center items-center" style="flex: 1;">
-                <i class="pi pi-spin pi-spinner text-4xl"></i>
+            <div class="chart-container" style="height: 400px;">
+              <p-chart
+                *ngIf="!isLoading && chartData"
+                type="line"
+                [data]="chartData"
+                [options]="chartOptions"
+                [style]="{'height': '100%'}">
+              </p-chart>
+
+              <div *ngIf="isLoading" class="flex justify-center items-center" style="height: 100%;">
+                <i class="pi pi-spin pi-spinner text-4xl text-gray-400"></i>
               </div>
 
-              <div *ngIf="!isLoading && campaignChartData && campaignChartData.datasets.length > 0"
-                   style="flex: 1; min-height: 0; position: relative;">
-                <p-chart
-                  type="line"
-                  [data]="campaignChartData"
-                  [options]="campaignChartOptions"
-                  style="height: 100%; width: 100%;">
-                </p-chart>
+              <div *ngIf="!isLoading && !chartData" class="flex justify-center items-center" style="height: 100%;">
+                <div class="text-center">
+                  <i class="pi pi-chart-line text-4xl text-gray-400 mb-4"></i>
+                  <p class="text-lg font-semibold mb-2">No campaign data found</p>
+                  <p class="text-gray-600">Sync your sales from the Sync page to see analytics.</p>
+                </div>
+              </div>
+            </div>
+          </p-tabpanel>
+
+          <p-tabpanel value="2">
+            <div class="chart-container" style="height: 400px;">
+              <p-chart
+                *ngIf="!isLoading && chartData"
+                type="line"
+                [data]="chartData"
+                [options]="chartOptions"
+                [style]="{'height': '100%'}">
+              </p-chart>
+
+              <div *ngIf="isLoading" class="flex justify-center items-center" style="height: 100%;">
+                <i class="pi pi-spin pi-spinner text-4xl text-gray-400"></i>
               </div>
 
-              <div *ngIf="!isLoading && (!campaignChartData || campaignChartData.datasets.length === 0)"
-                   style="flex: 1;"
-                   class="flex justify-center items-center text-gray-500">
-                No sales data available for the selected filters
+              <div *ngIf="!isLoading && !chartData" class="flex justify-center items-center" style="height: 100%;">
+                <div class="text-center">
+                  <i class="pi pi-chart-line text-4xl text-gray-400 mb-4"></i>
+                  <p class="text-lg font-semibold mb-2">No product data found</p>
+                  <p class="text-gray-600">Sync your sales from the Sync page to see analytics.</p>
+                </div>
               </div>
             </div>
           </p-tabpanel>

@@ -14,151 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      campaign_daily_spend: {
-        Row: {
-          amount: number | null
-          campaign_id: string
-          created_at: string | null
-          id: string
-          spend_date: string
-        }
-        Insert: {
-          amount?: number | null
-          campaign_id: string
-          created_at?: string | null
-          id?: string
-          spend_date: string
-        }
-        Update: {
-          amount?: number | null
-          campaign_id?: string
-          created_at?: string | null
-          id?: string
-          spend_date?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "campaign_daily_spend_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       campaigns: {
         Row: {
-          cpm: number | null
-          created_at: string | null
-          duration_days: number
+          budget: number | null
+          clicks: number
+          created_at: string
+          end_date: string | null
           id: string
+          impressions: number
           name: string
+          purchase_value: number
+          purchases: number
+          spend: number
           start_date: string
+          updated_at: string
           user_id: string
         }
         Insert: {
-          cpm?: number | null
-          created_at?: string | null
-          duration_days: number
-          id?: string
+          budget?: number | null
+          clicks?: number
+          created_at?: string
+          end_date?: string | null
+          id: string
+          impressions?: number
           name: string
-          start_date: string
+          purchase_value?: number
+          purchases?: number
+          spend?: number
+          start_date?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
-          cpm?: number | null
-          created_at?: string | null
-          duration_days?: number
+          budget?: number | null
+          clicks?: number
+          created_at?: string
+          end_date?: string | null
           id?: string
+          impressions?: number
           name?: string
+          purchase_value?: number
+          purchases?: number
+          spend?: number
           start_date?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      product_prices: {
+      products: {
         Row: {
-          created_at: string | null
-          id: string
-          price: number
-          product_id: string
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          price: number | null
+          status: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          price: number
-          product_id: string
+          created_at?: string
+          id: number
+          image_url?: string | null
+          name: string
+          price?: number | null
+          status?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          id?: number
+          image_url?: string | null
+          name?: string
+          price?: number | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_bump: boolean | null
+          line_total: number
+          product_id: number | null
+          product_name: string
+          quantity: number
+          sale_id: number
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
           id?: string
-          price?: number
-          product_id?: string
+          is_bump?: boolean | null
+          line_total: number
+          product_id?: number | null
+          product_name: string
+          quantity?: number
+          sale_id: number
+          unit_price: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_bump?: boolean | null
+          line_total?: number
+          product_id?: number | null
+          product_name?: string
+          quantity?: number
+          sale_id?: number
+          unit_price?: number
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "product_prices_product_id_fkey"
+            foreignKeyName: "sale_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      products: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       sales: {
         Row: {
-          campaign_id: string
-          created_at: string | null
-          id: string
-          product_id: string
-          product_price_id: string
-          quantity: number
-          sale_date: string
+          campaign_id: string | null
+          created_at: string
+          date_created: string
+          device_type: string | null
+          first_visit_date: string | null
+          has_bump: boolean | null
+          id: number
+          order_status: string
+          order_total: number
+          referrer: string | null
+          session_count: number | null
+          session_page_views: number | null
+          time_to_conversion_hours: number | null
+          traffic_source_type: string | null
+          updated_at: string
           user_id: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
-          campaign_id: string
-          created_at?: string | null
-          id?: string
-          product_id: string
-          product_price_id: string
-          quantity: number
-          sale_date: string
+          campaign_id?: string | null
+          created_at?: string
+          date_created: string
+          device_type?: string | null
+          first_visit_date?: string | null
+          has_bump?: boolean | null
+          id: number
+          order_status: string
+          order_total: number
+          referrer?: string | null
+          session_count?: number | null
+          session_page_views?: number | null
+          time_to_conversion_hours?: number | null
+          traffic_source_type?: string | null
+          updated_at?: string
           user_id: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
-          campaign_id?: string
-          created_at?: string | null
-          id?: string
-          product_id?: string
-          product_price_id?: string
-          quantity?: number
-          sale_date?: string
+          campaign_id?: string | null
+          created_at?: string
+          date_created?: string
+          device_type?: string | null
+          first_visit_date?: string | null
+          has_bump?: boolean | null
+          id?: number
+          order_status?: string
+          order_total?: number
+          referrer?: string | null
+          session_count?: number | null
+          session_page_views?: number | null
+          time_to_conversion_hours?: number | null
+          traffic_source_type?: string | null
+          updated_at?: string
           user_id?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: [
           {
@@ -168,21 +227,34 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "sales_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_product_price_id_fkey"
-            columns: ["product_price_id"]
-            isOneToOne: false
-            referencedRelation: "product_prices"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      secrets: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -328,18 +400,14 @@ export type Product = Database['public']['Tables']['products']['Row'];
 export type ProductInsert = Database['public']['Tables']['products']['Insert'];
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 
-export type ProductPrice = Database['public']['Tables']['product_prices']['Row'];
-export type ProductPriceInsert = Database['public']['Tables']['product_prices']['Insert'];
-export type ProductPriceUpdate = Database['public']['Tables']['product_prices']['Update'];
-
 export type Campaign = Database['public']['Tables']['campaigns']['Row'];
 export type CampaignInsert = Database['public']['Tables']['campaigns']['Insert'];
 export type CampaignUpdate = Database['public']['Tables']['campaigns']['Update'];
 
-export type CampaignDailySpend = Database['public']['Tables']['campaign_daily_spend']['Row'];
-export type CampaignDailySpendInsert = Database['public']['Tables']['campaign_daily_spend']['Insert'];
-export type CampaignDailySpendUpdate = Database['public']['Tables']['campaign_daily_spend']['Update'];
-
 export type Sale = Database['public']['Tables']['sales']['Row'];
 export type SaleInsert = Database['public']['Tables']['sales']['Insert'];
 export type SaleUpdate = Database['public']['Tables']['sales']['Update'];
+
+export type SaleItem = Database['public']['Tables']['sale_items']['Row'];
+export type SaleItemInsert = Database['public']['Tables']['sale_items']['Insert'];
+export type SaleItemUpdate = Database['public']['Tables']['sale_items']['Update'];

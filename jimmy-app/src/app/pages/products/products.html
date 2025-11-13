@@ -26,7 +26,9 @@
             <th>Name</th>
             <th>Status</th>
             <th>Price</th>
-            <th>Sale Price</th>
+            <th>Sales</th>
+            <th>Total Sales ($)</th>
+            <th>Price Range</th>
           </tr>
         </ng-template>
         <ng-template #body let-product>
@@ -52,17 +54,14 @@
               </p-tag>
             </td>
             <td>{{ formatCurrency(product.price) }}</td>
-            <td>
-              <span *ngIf="product.sale_price" class="text-red-600 font-semibold">
-                {{ formatCurrency(product.sale_price) }}
-              </span>
-              <span *ngIf="!product.sale_price">-</span>
-            </td>
+            <td>{{ product.sales_count || 0 }}</td>
+            <td>{{ formatCurrency(product.total_sales_revenue || 0) }}</td>
+            <td>{{ formatPriceRange(product.min_sold_price, product.max_sold_price) }}</td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
           <tr>
-            <td colspan="5" class="text-center py-8">
+            <td colspan="7" class="text-center py-8">
               <div class="flex flex-col items-center gap-4">
                 <i class="pi pi-inbox text-4xl text-gray-400"></i>
                 <div>

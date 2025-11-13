@@ -14,9 +14,12 @@ interface ProductData {
   name: string;
   status: string | null;
   price: number | null;
-  sale_price: number | null;
   image_url: string | null;
   updated_at: string;
+  sales_count?: number;
+  min_sold_price?: number | null;
+  max_sold_price?: number | null;
+  total_sales_revenue?: number;
 }
 
 @Component({
@@ -72,7 +75,59 @@ export class Products implements OnInit {
       if (error) {
         this.errorMessage = error.message || 'Failed to load products';
       } else {
-        this.products = data || [];
+        const products = data || [];
+
+        // Get all sale items for this user in one query
+        const { data: allSaleItems, error: saleItemsError } = await this.supabase
+          .from('sale_items')
+          .select('product_id, unit_price, quantity');
+
+        if (saleItemsError) {
+          console.error('Error loading sale items:', saleItemsError);
+          // Still show products even if sale items fail to load
+          this.products = products.map(p => ({
+            ...p,
+            sales_count: 0,
+            min_sold_price: null,
+            max_sold_price: null,
+            total_sales_revenue: 0
+          }));
+        } else {
+          // Group sale items by product
+          const saleItemsByProduct = new Map<number, any[]>();
+          allSaleItems?.forEach(item => {
+            if (!saleItemsByProduct.has(item.product_id)) {
+              saleItemsByProduct.set(item.product_id, []);
+            }
+            saleItemsByProduct.get(item.product_id)!.push(item);
+          });
+
+          // Calculate stats for each product
+          this.products = products.map(product => {
+            const items = saleItemsByProduct.get(product.id) || [];
+
+            let minPrice: number | null = null;
+            let maxPrice: number | null = null;
+            let totalCount = 0;
+            let totalRevenue = 0;
+
+            if (items.length > 0) {
+              const prices = items.map(item => item.unit_price);
+              minPrice = Math.min(...prices);
+              maxPrice = Math.max(...prices);
+              totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+              totalRevenue = items.reduce((sum, item) => sum + (item.unit_price * (item.quantity || 1)), 0);
+            }
+
+            return {
+              ...product,
+              sales_count: totalCount,
+              min_sold_price: minPrice,
+              max_sold_price: maxPrice,
+              total_sales_revenue: totalRevenue
+            };
+          });
+        }
       }
     } catch (error: any) {
       this.errorMessage = error.message || 'Failed to load products';
@@ -103,6 +158,12 @@ export class Products implements OnInit {
       default:
         return 'secondary';
     }
+  }
+
+  formatPriceRange(minPrice: number | null | undefined, maxPrice: number | null | undefined): string {
+    if (!minPrice && !maxPrice) return '-';
+    if (minPrice === maxPrice) return this.formatCurrency(minPrice ?? null);
+    return `${this.formatCurrency(minPrice ?? null)} - ${this.formatCurrency(maxPrice ?? null)}`;
   }
 
 }

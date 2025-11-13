@@ -49,7 +49,6 @@ export interface WooCommerceProduct {
   name: string;
   status: string;
   price: string;
-  sale_price: string;
   images: Array<{
     src: string;
   }>;
@@ -641,7 +640,6 @@ export class SyncService {
         name: product.name,
         status: product.status,
         price: product.price ? parseFloat(product.price) : null,
-        sale_price: product.sale_price ? parseFloat(product.sale_price) : null,
         image_url: product.images && product.images.length > 0 ? product.images[0].src : null,
         updated_at: new Date().toISOString()
       }));
